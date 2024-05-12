@@ -1,0 +1,11 @@
+[package]
+name = "trebuckot"
+version = "0.1.0"
+edition = "2021"
+authors = ["Scup st.chrysops@gmail.com"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+macroquad = "0.4"
+glam = "0.27.0"
