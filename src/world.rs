@@ -1,28 +1,8 @@
 use super::*;
-use ::glam::i64::I64Vec2;
 
-const GRAVITATION: f32 = 6.6743e-11;
-const TERRAIN_DEPTH: f32 = 1000.0;
+const TERRAIN_DEPTH: f32 = 4000.0;
 
-pub fn to_coords64(f: Vec2) -> I64Vec2 {
-    I64Vec2::new((f.x.round() * 256.0) as i64, (f.y.round() * 256.0) as i64)
-}
-
-pub struct System {
-    position: IVec2,
-    worlds: Vec<World>,
-}
-
-impl System {
-    pub fn new(x: i32, y: i32) -> Self {
-        Self {
-            position: ivec2(x, y),
-            worlds: Vec::new(),
-        }
-    }
-}
-
-enum WorldType {
+pub enum WorldClass {
     Minshara,
     Planet,
     Demon,
@@ -32,46 +12,68 @@ enum WorldType {
 }
 
 pub struct World {
-    position: I64Vec2, // 1/256 meters
-    radius: f32,       // meters
-    mass: f32,
+    pub system:   IVec2,   // lightyears
+    pub position: I64Vec2, // 1/256 meters
+    pub radius:   f32,     // meters
+    pub mass:     f32,     // kilograms
 
-    pub entities: Vec<Entity>,
     pub terrain: Terrain,
+    pub class:   WorldClass,
 }
 
 impl World {
-    pub fn new(x: i64, y: i64, radius: f32, mass: f32, terrain_data: Vec<f32>) -> Self {
-        // Initialize terrain
-        let mut upper = Vec::new();
-        let mut lower = Vec::new();
-        let mut i = 0.0;
-        for altitude in terrain_data.iter() {
-            upper.push(to_coords64(polar_to_cartesian(
-                radius + altitude,
-                i / radius,
-            )));
-            lower.push(to_coords64(polar_to_cartesian(
-                radius - TERRAIN_DEPTH,
-                i / radius,
-            )));
-            i += 1000.0;
-        }
-
+    pub fn new(
+        system: IVec2,
+        position: I64Vec2,
+        radius: f32,
+        mass: f32,
+        terrain_data: Vec<f32>,
+        class: WorldClass,
+    ) -> Self {
         Self {
-            position: I64Vec2::new(x, y),
+            system,
+            position,
             radius,
             mass,
-            entities: Vec::new(),
-            terrain: Terrain { upper, lower },
+            terrain: Terrain::new(position, radius, terrain_data),
+            class,
         }
-    }
-    pub fn pull_force(&self, m: f32, r: f32) -> f32 {
-        GRAVITATION * self.mass * m / r.powi(2)
     }
 }
 
+// Contains all the points of a World in i64 space
 pub struct Terrain {
-    pub upper: Vec<I64Vec2>,
-    pub lower: Vec<I64Vec2>,
+    pub circumference: usize,
+    pub upper:         Vec<I64Vec2>,
+    pub lower:         Vec<I64Vec2>,
+}
+
+impl Terrain {
+    fn new(position: I64Vec2, radius: f32, terrain_data: Vec<f32>) -> Self {
+        let mut upper = Vec::with_capacity(terrain_data.len());
+        let mut lower = Vec::with_capacity(terrain_data.len());
+        let mut i = 0.0;
+        for terrain_height in terrain_data.iter() {
+            upper.push(
+                to_i64coords(polar_to_cartesian(radius + terrain_height, i / radius)) + position,
+            );
+            lower.push(
+                to_i64coords(polar_to_cartesian(radius - TERRAIN_DEPTH, i / radius)) + position,
+            );
+            i += 1000.0;
+        }
+        Self {
+            circumference: terrain_data.len(),
+            upper,
+            lower,
+        }
+    }
+}
+
+pub fn terrain_idx_beneath(game: &Game) -> usize {
+    let slice = game.world.terrain.circumference as f32 / consts::TAU;
+    let angle = to_angle(to_f32coords(
+        game.render_space.position - game.world.position,
+    ));
+    (slice * angle % game.world.terrain.circumference as f32) as usize
 }
