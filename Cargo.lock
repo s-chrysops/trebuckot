@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "trebuckot"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "glam 0.27.0",
  "macroquad",

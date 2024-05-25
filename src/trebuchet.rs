@@ -142,10 +142,10 @@ impl Trebuchet {
 
     pub fn v_projectile(&self) -> Vec2 {
         vec2(
-            -self.arm.long_length * self.arm.angle.cos() * self.d_arm 
-                - self.sling.length * (self.arm.angle + self.sling.angle).cos() * (self.d_arm + self.d_sling),
-            -self.arm.long_length * self.arm.angle.sin() * self.d_arm 
-                - self.sling.length * (self.arm.angle + self.sling.angle).sin() * (self.d_arm + self.d_sling)
+            -self.arm.long_length * self.arm.angle.cos() * self.d_arm - self.sling.length 
+                * (self.arm.angle + self.sling.angle).cos() * (self.d_arm + self.d_sling),
+            -self.arm.long_length * self.arm.angle.sin() * self.d_arm - self.sling.length 
+                * (self.arm.angle + self.sling.angle).sin() * (self.d_arm + self.d_sling)
         )
     }
 
@@ -167,24 +167,53 @@ impl Trebuchet {
     }
 
     pub fn run(&mut self, dt: f32) {
-        match self.state {
+        let stage: Box<dyn Fn(f32, Vec3, Vec3) -> Vec3x2> = match self.state {
             TrebuchetState::Stage1 => {
-                self.stage_1(dt);
+                if self.ground_force (
+                    self.stage_1( 
+                        dt,
+                        vec3(self.arm.angle, self.weight.angle, self.sling.angle),
+                        vec3(self.d_arm, self.d_weight, self.d_sling)
+                    ).1.x) <= 0.0 {
+                        self.state = TrebuchetState::Stage2;
+                    }
+                Box::new(|dt: f32, x: Vec3, y: Vec3| self.stage_1(dt, x, y))
             }
             TrebuchetState::Stage2 => {
-                self.stage_2(dt);
                 if to_angle(self.v_projectile()) <= consts::FRAC_PI_4 {
                     self.m_proj = 0.01;
                     self.state = TrebuchetState::Stage3;
                 }
+                Box::new(|dt: f32, x: Vec3, y: Vec3| self.stage_2(dt, x, y))
             }
             TrebuchetState::Stage3 => {
-                self.stage_2(dt);
+                Box::new(|dt: f32, x: Vec3, y: Vec3| self.stage_2(dt, x, y))
             }
-        }
+        };
+        
+        let rk4_results = rk4 (
+            vec3(self.arm.angle, self.weight.angle, self.sling.angle),
+            vec3(self.d_arm, self.d_weight, self.d_sling),
+            dt, 
+            stage
+        );
+        [self.arm.angle, self.weight.angle, self.sling.angle] = rk4_results.0.to_array();
+        [self.d_arm, self.d_weight, self.d_sling] = rk4_results.1.to_array();
     }
 
-    fn stage_1(&mut self, dt: f32) {
+    fn ground_force(&self, aw_prime: f32) -> f32 {
+        self.m_proj * (GRAVITY + (self.sling.length * ((self.arm.angle 
+            + self.sling.angle).cos() * self.d_sling * (self.d_sling + 2.0 * self.d_arm) 
+            / (self.arm.angle + self.sling.angle).sin() + ((self.arm.angle + self.sling.angle).cos() 
+            / (self.arm.angle + self.sling.angle).sin() + self.arm.long_length 
+            * self.arm.angle.cos() / (self.sling.length * (self.arm.angle + self.sling.angle).sin())) 
+            * self.d_arm.powi(2)) - self.arm.long_length * self.sling.angle.sin() 
+            * self.d_arm.powi(2) - self.arm.long_length * (self.sling.angle.cos() 
+            - self.arm.angle.sin() / (self.arm.angle + self.sling.angle).sin()) * aw_prime) 
+            / (self.arm.angle + self.sling.angle).sin())
+    }
+
+    fn stage_1(&self, dt: f32, angles: Vec3, velocities: Vec3) -> Vec3x2 {
         let lal = self.arm.long_length;
         let las = self.arm.short_length;
         let cga = self.arm.center;
@@ -198,68 +227,49 @@ impl Trebuchet {
         let ia = self.arm.inertia;
         let iw = self.weight.inertia;
 
-        self.arm.angle += self.d_arm * dt;
-        self.weight.angle += self.d_weight * dt;
-        self.sling.angle += self.d_sling * dt;
+        let aq = angles.x;
+        let wq = angles.y;
+        let sq = angles.z;
 
-        let aq = self.arm.angle;
-        let wq = self.weight.angle;
-        let sq = self.sling.angle;
+        let aw = velocities.x;
+        let ww = velocities.y;
+        let sw = velocities.z;
 
         #[rustfmt::skip]
         let m11 = -mp * lal.powi(2)
-            * (-1.0 + 2.0 * aq.sin() * sq.cos() / (aq + sq).sin())
-            + ia + iw + ma * cga.powi(2) + mp
-            * lal.powi(2) * aq.sin().powi(2) / (aq + sq).sin().powi(2)
-            + mw * (las.powi(2) + lw.powi(2)+ 2.0 * las * lw * wq.cos());
+            * (-1.0 + 2.0 * aq.sin() * sq.cos() / (aq + sq).sin()) + ia + iw + ma * cga.powi(2) 
+            + mp * lal.powi(2) * aq.sin().powi(2) / (aq + sq).sin().powi(2) + mw * (las.powi(2) 
+            + lw.powi(2)+ 2.0 * las * lw * wq.cos());
         let m12 = iw + lw * mw * (lw + las * wq.cos());
         let m21 = iw + lw * mw * (lw + las * wq.cos());
         let m22 = iw + mw * lw.powi(2);
 
         #[rustfmt::skip]
-        let r1 = GRAVITY * cga * ma * aq.sin() + lal * ls * mp * (sq.sin()
-            * (self.d_arm + self.d_sling).powi(2) + sq.cos()
-            * ((aq + sq).cos() * self.d_sling * (self.d_sling + 2.0 * self.d_arm)
-            / (aq + sq).sin() + ((aq + sq).cos()
-            / (aq + sq).sin() + lal * aq.cos()
-            / (ls * (aq + sq).sin())) * self.d_arm.powi(2)))
-            + lal * mp * aq.sin() * (lal * sq.sin() * self.d_arm.powi(2) - ls
-            * ((aq + sq).cos() * self.d_sling * (self.d_sling + 2.0 * self.d_arm)
-            / (aq  + sq).sin() + ((aq + sq).cos()
-            / (aq + sq).sin() + lal * aq.cos() / (ls * (aq
-            + sq).sin())) * self.d_arm.powi(2))) / (aq + sq).sin()
-            - GRAVITY * mw * (las * aq.sin() + lw * (aq + wq).sin())
-            - las * lw * mw * wq.sin() * (self.d_arm.powi(2) 
-            - (self.d_arm + self.d_weight).powi(2));
+        let r1 = GRAVITY * cga * ma * aq.sin() + lal * ls * mp * (sq.sin() * (aw + sw).powi(2) 
+            + sq.cos() * ((aq + sq).cos() * sw * (sw + 2.0 * aw) / (aq + sq).sin() 
+            + ((aq + sq).cos() / (aq + sq).sin() + lal * aq.cos() / (ls * (aq + sq).sin())) 
+            * aw.powi(2))) + lal * mp * aq.sin() * (lal * sq.sin() * aw.powi(2) - ls
+            * ((aq + sq).cos() * sw * (sw + 2.0 * aw) / (aq  + sq).sin() + ((aq + sq).cos()
+            / (aq + sq).sin() + lal * aq.cos() / (ls * (aq + sq).sin())) * aw.powi(2))) 
+            / (aq + sq).sin() - GRAVITY * mw * (las * aq.sin() + lw * (aq + wq).sin()) - las * lw 
+            * mw * wq.sin() * (aw.powi(2) - (aw + ww).powi(2));
+        let r2 = -lw * mw * (GRAVITY * (aq + wq) + las * wq.sin() * aw.powi(2));
 
+        let aw_prime = (r1 * m22 - r2 * m12) / (m11 * m22 - m12 * m21);
+        let ww_prime = -(r1 * m21 - r2 * m11) / (m11 * m22 - m12 * m21);
         #[rustfmt::skip]
-        let r2 = -lw * mw * (GRAVITY * (aq + wq)
-            + las * wq.sin() * self.d_arm.powi(2));
-
-        let arm_prime = (r1 * m22 - r2 * m12) / (m11 * m22 - m12 * m21);
-        let weight_prime = -(r1 * m21 - r2 * m11) / (m11 * m22 - m12 * m21);
-        #[rustfmt::skip]
-        let sling_prime = - (aq + sq).cos() * self.d_sling
-            * (self.d_sling + 2.0 * self.d_arm) / (aq + sq).sin()
-            - ((aq + sq).cos() / (aq + sq).sin()
-            + lal * aq.cos() / (ls * (aq + sq).sin()))
-            * self.d_arm.powi(2) - (lal * aq.sin() + ls * (aq + sq).sin())
-            * arm_prime / (ls * (aq + sq).sin());
-
-        self.d_arm += arm_prime * dt;
-        self.d_weight += weight_prime * dt;
-        self.d_sling += sling_prime * dt;
-
-        #[rustfmt::skip]
-        let fy = self.m_proj * (GRAVITY + (ls * ((aq + sq).cos() * self.d_sling 
-            * (self.d_sling + 2.0 * self.d_arm) / (aq + sq).sin() + ((aq + sq).cos() 
-            / (aq + sq).sin() + lal * aq.cos() / (ls * (aq + sq).sin())) * self.d_arm.powi(2)) 
-            - lal * sq.sin() * self.d_arm.powi(2) - lal * (sq.cos() - aq.sin() 
-            / (aq + sq).sin()) * arm_prime) / (aq + sq).sin());
-        if fy <= 0.0 { self.state = TrebuchetState::Stage2 };
+        let sw_prime = -(aq + sq).cos() * sw * (sw + 2.0 * aw) / (aq + sq).sin() 
+            - ((aq + sq).cos() / (aq + sq).sin() + lal * aq.cos() / (ls * (aq + sq).sin())) 
+            * aw.powi(2) - (lal * aq.sin() + ls * (aq + sq).sin()) * aw_prime 
+            / (ls * (aq + sq).sin());
+                
+        Vec3x2 (
+            vec3(aw + aw_prime * dt, ww + ww_prime * dt, sw + sw_prime * dt),
+            vec3(aw_prime, ww_prime, sw_prime)
+        )
     }
 
-    fn stage_2(&mut self, dt: f32) {
+    fn stage_2(&self, dt: f32, angles: Vec3, velocities: Vec3) -> Vec3x2 {
         let lal = self.arm.long_length;
         let las = self.arm.short_length;
         let cga = self.arm.center;
@@ -273,60 +283,79 @@ impl Trebuchet {
         let ia = self.arm.inertia;
         let iw = self.weight.inertia;
 
-        self.arm.angle += self.d_arm * dt;
-        self.weight.angle += self.d_weight * dt;
-        self.sling.angle += self.d_sling * dt;
+        let aq = angles.x;
+        let wq = angles.y;
+        let sq = angles.z;
 
-        let aq = self.arm.angle;
-        let wq = self.weight.angle;
-        let sq = self.sling.angle;
+        let aw = velocities.x;
+        let ww = velocities.y;
+        let sw = velocities.z;
 
         #[rustfmt::skip]
-        let m11= ia + iw + ma * cga.powi(2) + mp 
+        let m11 = ia + iw + ma * cga.powi(2) + mp 
             * (lal.powi(2) + ls.powi(2) + 2.0 * lal * ls * sq.cos()) 
             + mw * (las.powi(2) + lw.powi(2) + 2.0 * las * lw * wq.cos());
-        let m12= iw + lw * mw * (lw + las * wq.cos());
-        let m13= ls * mp * (ls + lal * sq.cos());
-        let m21= iw + lw * mw * (lw + las * wq.cos());
-        let m22= iw + mw * lw.powi(2);
-        let m31= ls * mp * (ls + lal * sq.cos());
-        let m33= mp * ls.powi(2);
+        let m12 = iw + lw * mw * (lw + las * wq.cos());
+        let m13 = ls * mp * (ls + lal * sq.cos());
+        let m21 = iw + lw * mw * (lw + las * wq.cos());
+        let m22 = iw + mw * lw.powi(2);
+        let m31 = ls * mp * (ls + lal * sq.cos());
+        let m33 = mp * ls.powi(2);
 
         #[rustfmt::skip]
-        let r1= GRAVITY * cga * ma * aq.sin() + GRAVITY * mp 
+        let r1 = GRAVITY * cga * ma * aq.sin() + GRAVITY * mp 
             * (lal * aq.sin() + ls * (aq + sq).sin()) - GRAVITY * mw 
             * (las * aq.sin() + lw * (aq + wq).sin()) - lal * ls * mp * sq.sin() 
-            * (self.d_arm.powi(2) - (self.d_arm + self.d_sling).powi(2)) 
+            * (aw.powi(2) - (aw + sw).powi(2)) 
             - las * lw * mw * wq.sin() 
-            * (self.d_arm.powi(2) - (self.d_arm + self.d_weight).powi(2));
-        let r2= -lw * mw * (GRAVITY * (aq + wq).sin() + las * wq.sin() * self.d_arm.powi(2));
-        let r3= ls * mp * (GRAVITY * (aq + sq).sin() - lal * sq.sin() * self.d_arm.powi(2));
+            * (aw.powi(2) - (aw + ww).powi(2));
+        let r2 = -lw * mw * (GRAVITY * (aq + wq).sin() + las * wq.sin() * aw.powi(2));
+        let r3 = ls * mp * (GRAVITY * (aq + sq).sin() - lal * sq.sin() * aw.powi(2));
 
-        let arm_prime = -(r1 * m22 * m33 - r2 * m12 * m33 - r3 * m13 * m22) 
+        let aw_prime = -(r1 * m22 * m33 - r2 * m12 * m33 - r3 * m13 * m22) 
             / (m13 * m22 * m31 - m33 * (m11 * m22 - m12 * m21));
-        let weight_prime = (r1 * m21 * m33 - r2 * (m11 * m33 - m13 * m31) - r3 * m13 * m21) 
+        let ww_prime = (r1 * m21 * m33 - r2 * (m11 * m33 - m13 * m31) - r3 * m13 * m21) 
             / (m13 * m22 * m31 - m33 * (m11 * m22 - m12 * m21));
-        let sling_prime = (r1 * m22 * m31 - r2 * m12 * m31 - r3 * (m11 * m22 - m12 * m21)) 
+        let sw_prime = (r1 * m22 * m31 - r2 * m12 * m31 - r3 * (m11 * m22 - m12 * m21)) 
             / (m13 * m22 * m31 - m33 * (m11 * m22 - m12 * m21));
-
-        self.d_arm += arm_prime * dt;
-        self.d_weight += weight_prime * dt;
-        self.d_sling += sling_prime * dt;
+        
+        Vec3x2 (
+            vec3(aw + aw_prime * dt, ww + ww_prime * dt, sw + sw_prime * dt),
+            vec3(aw_prime, ww_prime, sw_prime)
+        )
     }
 }
 
-/*
-fn prime(d: f32) -> impl Fn(f32, f32) -> f32 {
-    |t, y| d * t
+// Tuple container for set of positions and velocities that can be multiplied
+struct Vec3x2(Vec3, Vec3);
+impl std::ops::Mul<Vec3x2> for f32 {
+    type Output = Vec3x2;
+    fn mul(self, rhs: Vec3x2) -> Vec3x2 {
+        Vec3x2 (
+            Vec3 {
+                x: self.mul(rhs.0.x),
+                y: self.mul(rhs.0.y),
+                z: self.mul(rhs.0.z),
+            },
+            Vec3 {
+                x: self.mul(rhs.1.x),
+                y: self.mul(rhs.1.y),
+                z: self.mul(rhs.1.z),
+            }
+        )
+    }
 }
-*/
-pub fn rk4<T>(t_i: f32, y_i: f32, dt: f32, f: T) -> f32
+
+fn rk4<T>(x: Vec3, y: Vec3, dt: f32, f: T) -> (Vec3, Vec3)
 where
-    T: Fn(f32, f32) -> f32,
+    T: Fn(f32, Vec3, Vec3) -> Vec3x2
 {
-    let k1 = f(t_i, y_i);
-    let k2 = f(t_i + 0.5 * dt, y_i + k1 * 0.5 * dt);
-    let k3 = f(t_i + 0.5 * dt, y_i + k2 * 0.5 * dt);
-    let k4 = f(t_i + dt, y_i + k3 * dt);
-    y_i + dt / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+    let k1 = dt * f(dt, x, y);
+    let k2 = dt * f(dt, x + k1.0 * 0.5, y + k1.1 * 0.5);
+    let k3 = dt * f(dt, x + k1.0 * 0.5, y + k2.1 * 0.5);
+    let k4 = dt * f(dt, x + k3.0, y + k3.1);
+    (   
+        x + (k1.0 + 2.0 * k2.0 + 2.0 * k3.0 + k4.0) / 6.0,
+        y + (k1.1 + 2.0 * k2.1 + 2.0 * k3.1 + k4.1) / 6.0
+    )
 }
