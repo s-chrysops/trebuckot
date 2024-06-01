@@ -1,4 +1,7 @@
-use super::*;
+use glam::I64Vec2;
+use core::f32::consts;
+use macroquad::math::{Vec2, Vec3, vec2, vec3};
+use crate::{to_angle, to_i64coords};
 
 const GRAVITY: f32 = 9.81;
 
@@ -16,6 +19,7 @@ struct TrebuchetArm {
     mass:         f32,
     inertia:      f32,
     angle:        f32,
+    velocity:     f32,
 }
 
 impl TrebuchetArm {
@@ -27,24 +31,27 @@ impl TrebuchetArm {
             mass:         parameters.2,
             inertia:      parameters.2 * (parameters.0 + parameters.1).powi(2) / 12.0,
             angle:        consts::PI - common_triangle.acos(),
+            velocity:     0.0,
         }
     }
 }
 
 struct TrebuchetWeight {
-    length:  f32,
-    mass:    f32,
-    inertia: f32,
-    angle:   f32,
+    length:     f32,
+    mass:       f32,
+    inertia:    f32,
+    angle:      f32,
+    velocity:   f32,
 }
 
 impl TrebuchetWeight {
     fn new(parameters: (f32, f32), common_triangle: f32) -> Self {
         Self {
-            length:  parameters.0,
-            mass:    parameters.1,
-            inertia: 1.0,
-            angle:   common_triangle.acos() - consts::PI,
+            length:   parameters.0,
+            mass:     parameters.1,
+            inertia:  1.0,
+            angle:    common_triangle.acos() - consts::PI,
+            velocity: 0.0,
         }
     }
 }
@@ -52,32 +59,45 @@ impl TrebuchetWeight {
 struct TrebuchetSling {
     length: f32,
     angle:  f32,
+    velocity:     f32,
 }
 
 impl TrebuchetSling {
     fn new(length: f32, common_triangle: f32) -> Self {
         Self {
             length,
-            angle: consts::PI - common_triangle.asin(),
+            angle:    consts::PI - common_triangle.asin(),
+            velocity: 0.0,
         }
     }
 }
 
-//#[derive(Default)]
 pub struct Trebuchet {
     pub position: I64Vec2,
-    height:   f32,
+    pub height:   f32,
     m_proj:   f32,
 
     arm:    TrebuchetArm,
     weight: TrebuchetWeight,
     sling:  TrebuchetSling,
 
-    d_arm:    f32,
-    d_sling:  f32,
-    d_weight: f32,
-
     pub state: TrebuchetState,
+}
+
+impl Default for Trebuchet {
+    fn default() -> Self {
+        let arm = (8.0, 2.0, 12.0);
+        let weight = (2.0, 100.0);
+        let sling = 8.0;
+        Trebuchet::new(
+            I64Vec2::new(0, 1_630_976_000),
+            5.6,
+            arm,
+            weight,
+            sling,
+            0.3
+        )
+    }
 }
 
 impl Trebuchet {
@@ -94,31 +114,28 @@ impl Trebuchet {
             position,
             height,
             m_proj,
-            arm: TrebuchetArm::new(arm, common_triangle),
+            arm:    TrebuchetArm::new(arm, common_triangle),
             weight: TrebuchetWeight::new(weight, common_triangle),
-            sling: TrebuchetSling::new(sling, common_triangle),
-            d_arm: 0.0,
-            d_sling: 0.0,
-            d_weight: 0.0,
-            state: TrebuchetState::Stage1,
+            sling:  TrebuchetSling::new(sling, common_triangle),
+            state:  TrebuchetState::Stage1,
         }
     }
 
-    fn armsling_point(&self) -> Vec2 {
+    pub fn armsling_point(&self) -> Vec2 {
         vec2(
             -self.arm.long_length * self.arm.angle.sin(),
             self.arm.long_length * self.arm.angle.cos(),
         )
     }
 
-    fn armweight_point(&self) -> Vec2 {
+    pub fn armweight_point(&self) -> Vec2 {
         vec2(
             self.arm.short_length * self.arm.angle.sin(),
             -self.arm.short_length * self.arm.angle.cos(),
         )
     }
 
-    fn sling_point(&self) -> Vec2 {
+    pub fn sling_point(&self) -> Vec2 {
         vec2(
             (-self.arm.long_length * self.arm.angle.sin())
                 - (self.sling.length * (self.arm.angle + self.sling.angle).sin()),
@@ -127,7 +144,7 @@ impl Trebuchet {
         )
     }
 
-    fn weight_point(&self) -> Vec2 {
+    pub fn weight_point(&self) -> Vec2 {
         vec2(
             (self.arm.short_length * self.arm.angle.sin())
                 + (self.weight.length * (self.arm.angle + self.weight.angle).sin()),
@@ -142,43 +159,42 @@ impl Trebuchet {
 
     pub fn v_projectile(&self) -> Vec2 {
         vec2(
-            -self.arm.long_length * self.arm.angle.cos() * self.d_arm - self.sling.length 
-                * (self.arm.angle + self.sling.angle).cos() * (self.d_arm + self.d_sling),
-            -self.arm.long_length * self.arm.angle.sin() * self.d_arm - self.sling.length 
-                * (self.arm.angle + self.sling.angle).sin() * (self.d_arm + self.d_sling)
+            -self.arm.long_length * self.arm.angle.cos() * self.arm.velocity 
+                - self.sling.length * (self.arm.angle + self.sling.angle).cos() 
+                * (self.arm.velocity + self.sling.velocity),
+            -self.arm.long_length * self.arm.angle.sin() * self.arm.velocity 
+                - self.sling.length * (self.arm.angle + self.sling.angle).sin() 
+                * (self.arm.velocity + self.sling.velocity),
         )
     }
 
-    pub fn draw(&self, game: &Game) {
-        let base = i64coords_to_screen(game, self.position);
-        let pivot = vec2(base.x, base.y + self.height);
-        let arm_s = self.armsling_point() + pivot;
-        let arm_w = self.armweight_point() + pivot;
-        let s = self.sling_point() + pivot;
-        let w = self.weight_point() + pivot;
-
-        draw_line(base.x, base.y, pivot.x, pivot.y, 0.1, BROWN);
-        draw_line(arm_s.x, arm_s.y, arm_w.x, arm_w.y, 0.1, YELLOW);
-        draw_line(s.x, s.y, arm_s.x, arm_s.y, 0.01, GRAY);
-        draw_line(w.x, w.y, arm_w.x, arm_w.y, 0.1, BLACK);
-
-        // let p = self.v_projectile() + s;
-        // draw_line(s.x, s.y, p.x, p.y, 0.05, PINK);
+    pub fn reset(&mut self) {
+        let common_triangle  = self.height / self.arm.long_length;
+        self.arm.velocity    = 0.0;
+        self.weight.velocity = 0.0;
+        self.sling.velocity  = 0.0;
+        self.arm.angle       = consts::PI - common_triangle.acos();
+        self.weight.angle    = common_triangle.acos() - consts::PI;
+        self.sling.angle     = consts::PI - common_triangle.asin();
+        self.state           = TrebuchetState::Stage1;
+        self.m_proj          = 0.3;
     }
 
     pub fn run(&mut self, dt: f32) {
         let stage: Box<dyn Fn(f32, Vec3, Vec3) -> Vec3x2> = match self.state {
+
             TrebuchetState::Stage1 => {
-                if self.ground_force (
-                    self.stage_1( 
-                        dt,
-                        vec3(self.arm.angle, self.weight.angle, self.sling.angle),
-                        vec3(self.d_arm, self.d_weight, self.d_sling)
-                    ).1.x) <= 0.0 {
-                        self.state = TrebuchetState::Stage2;
-                    }
+                let Vec3x2(_, Vec3{x: aw_prime, ..}) = self.stage_1 ( 
+                    dt,
+                    vec3(self.arm.angle, self.weight.angle, self.sling.angle),
+                    vec3(self.arm.velocity, self.weight.velocity, self.sling.velocity)
+                );
+                if self.ground_force(aw_prime) <= 0.0 {
+                    self.state = TrebuchetState::Stage2;
+                }
                 Box::new(|dt: f32, x: Vec3, y: Vec3| self.stage_1(dt, x, y))
             }
+
             TrebuchetState::Stage2 => {
                 if to_angle(self.v_projectile()) <= consts::FRAC_PI_4 {
                     self.m_proj = 0.01;
@@ -186,6 +202,7 @@ impl Trebuchet {
                 }
                 Box::new(|dt: f32, x: Vec3, y: Vec3| self.stage_2(dt, x, y))
             }
+
             TrebuchetState::Stage3 => {
                 Box::new(|dt: f32, x: Vec3, y: Vec3| self.stage_2(dt, x, y))
             }
@@ -193,22 +210,22 @@ impl Trebuchet {
         
         let rk4_results = rk4 (
             vec3(self.arm.angle, self.weight.angle, self.sling.angle),
-            vec3(self.d_arm, self.d_weight, self.d_sling),
+            vec3(self.arm.velocity, self.weight.velocity, self.sling.velocity),
             dt, 
             stage
         );
-        [self.arm.angle, self.weight.angle, self.sling.angle] = rk4_results.0.to_array();
-        [self.d_arm, self.d_weight, self.d_sling] = rk4_results.1.to_array();
+        Vec3 {x: self.arm.angle, y: self.weight.angle, z: self.sling.angle}         = rk4_results.0;
+        Vec3 {x: self.arm.velocity, y: self.weight.velocity, z:self.sling.velocity} = rk4_results.1;
     }
 
     fn ground_force(&self, aw_prime: f32) -> f32 {
-        self.m_proj * (GRAVITY + (self.sling.length * ((self.arm.angle 
-            + self.sling.angle).cos() * self.d_sling * (self.d_sling + 2.0 * self.d_arm) 
+        self.m_proj * (GRAVITY + (self.sling.length * ((self.arm.angle + self.sling.angle).cos() 
+            * self.sling.velocity * (self.sling.velocity + 2.0 * self.arm.velocity) 
             / (self.arm.angle + self.sling.angle).sin() + ((self.arm.angle + self.sling.angle).cos() 
-            / (self.arm.angle + self.sling.angle).sin() + self.arm.long_length 
-            * self.arm.angle.cos() / (self.sling.length * (self.arm.angle + self.sling.angle).sin())) 
-            * self.d_arm.powi(2)) - self.arm.long_length * self.sling.angle.sin() 
-            * self.d_arm.powi(2) - self.arm.long_length * (self.sling.angle.cos() 
+            / (self.arm.angle + self.sling.angle).sin() + self.arm.long_length * self.arm.angle.cos() 
+            / (self.sling.length * (self.arm.angle + self.sling.angle).sin())) 
+            * self.arm.velocity.powi(2)) - self.arm.long_length * self.sling.angle.sin() 
+            * self.arm.velocity.powi(2) - self.arm.long_length * (self.sling.angle.cos() 
             - self.arm.angle.sin() / (self.arm.angle + self.sling.angle).sin()) * aw_prime) 
             / (self.arm.angle + self.sling.angle).sin())
     }

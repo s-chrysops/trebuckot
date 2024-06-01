@@ -1,25 +1,21 @@
-use super::*;
+use glam::I64Vec2;
+use macroquad::math::Vec2;
+
+use crate::{to_i64coords, Game, GameState};
 
 pub fn do_physics(game: &mut Game, tick: f32) {
-    let terrain_a = game.world.terrain.upper[{
-        let slice = game.world.terrain.circumference as f32 / consts::TAU;
-        let angle = to_angle(to_f32coords(
-            game.render_space.position - game.world.position,
-        ));
-        (slice * angle % game.world.terrain.circumference as f32) as usize
-    }];
-    let terrain_b = game.world.terrain.upper
-        [(({
-            let slice = game.world.terrain.circumference as f32 / consts::TAU;
-            let angle = to_angle(to_f32coords(
-                game.render_space.position - game.world.position,
-            ));
-            (slice * angle % game.world.terrain.circumference as f32) as usize
-        }) + 1) % game.world.terrain.circumference];
+    let terrain_a = game.world.terrain.upper[game
+        .world
+        .get_terrain_idx_beneath(game.player.position)];
+    let terrain_b = game.world.terrain.upper[(game
+        .world
+        .get_terrain_idx_beneath(game.player.position)
+        + 1)
+        % game.world.terrain.circ];
 
     // Apply gravity if player above terrain
     if orientation(terrain_a, terrain_b, game.player.position) == 1 {
-        game.player.acceleration += game.player.get_grativy(&game.world);
+        game.player.acceleration += game.world.get_grativy(game.player.position);
     }
 
     let displacement =
@@ -38,16 +34,17 @@ pub fn do_physics(game: &mut Game, tick: f32) {
             game.player.position + displacement,
         )
         .unwrap();
-        game.player.velocity = vec2(0.0, 0.0);
+        game.player.velocity = Vec2::default();
+        game.state = GameState::Landed;
     } else {
         game.player.position += displacement;
 
         // Leapfrog intergration
-        let new_acceleration = game.player.get_grativy(&game.world);
+        let new_acceleration = game.world.get_grativy(game.player.position);
         game.player.velocity += 0.5 * (game.player.acceleration + new_acceleration) * tick;
     }
 
-    game.player.acceleration = vec2(0.0, 0.0);
+    game.player.acceleration = Vec2::default();
 }
 
 // General case do line segments (a, b), (c, d) intersect

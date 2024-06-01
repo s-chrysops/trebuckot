@@ -1,6 +1,6 @@
 [package]
 name = "trebuckot"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 authors = ["Scup st.chrysops@gmail.com"]
 
@@ -8,4 +8,5 @@ authors = ["Scup st.chrysops@gmail.com"]
 
 [dependencies]
 macroquad = "0.4"
+quad-storage = "0.1.0"
 glam = "0.27.0"

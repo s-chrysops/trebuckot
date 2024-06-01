@@ -1,41 +1,69 @@
-use ::glam::i64::I64Vec2;
-use core::f32::consts;
 use macroquad::prelude::*;
+use game::*;
+use render::*;
+use ui::*;
 
 mod game;
-pub use game::*;
-
-mod trebuchet;
-pub use trebuchet::*;
-
-mod world;
-pub use world::*;
-
-mod player;
-pub use player::*;
-
 mod physics;
-pub use physics::*;
+mod player;
+mod render;
+mod resources;
+mod trebuchet;
+mod ui;
+mod world;
 
-mod draw;
-pub use draw::*;
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Trebuckot".to_owned(),
+        fullscreen: false,
+        window_resizable: true,
+        window_width: 1280,
+        window_height: 720,
+        platform: miniquad::conf::Platform {
+            linux_backend: miniquad::conf::LinuxBackend::WaylandOnly,
+            framebuffer_alpha: false,
+            swap_interval: None,
+            ..Default::default()
+        },
+        icon: Some(ui::icon::set()),
+        sample_count: 0,
+        ..Default::default()
+    }
+}
 
-const GAME_SIZE_X: f32 = 1280.0;
-const GAME_SIZE_Y: f32 = 720.0;
-const PHYSICS_TICK: f32 = 0.001;
-
-#[macroquad::main("Trebuckot")]
+#[macroquad::main(window_conf)]
 async fn main() {
+    set_pc_assets_folder("assets");
     let mut game = Game::init().await;
+    let mut render = Render::init().await;
+    let mut ui = UI::init();
 
     let mut avg_fps = 0.0;
     let mut avg_frame = 0.0;
-    let mut fps_samples: Vec<i32> = Vec::new();
-    let mut frame_samples: Vec<f32> = Vec::new();
     let sample_size = 60;
+    let mut fps_samples: Vec<i32> = Vec::with_capacity(sample_size);
+    let mut frame_samples: Vec<f32> = Vec::with_capacity(sample_size);
 
     loop {
-        game.run();
+        match game.state {
+            GameState::MainMenu => {
+                ui.main_menu(&mut game);
+            }
+            GameState::Paused => {
+                ui.pause_menu(&mut game);
+            }
+            GameState::Landed => {
+                ui.landed_screen(&mut game);
+            }
+            _ => {
+                let ami = 1337;
+                let cute = 1337;
+                assert_eq!(ami, cute);
+            }
+        }
+        game.update();
+        render.update(&game);
+        render.draw(&game);
 
         fps_samples.push(get_fps());
         frame_samples.push(get_frame_time());
@@ -47,22 +75,22 @@ async fn main() {
         }
 
         // Get world position from mouse
-        let cursor = game
+        let cursor = render
             .camera
             .screen_to_world(vec2(mouse_position().0, mouse_position().1));
-        let v_proj = game.trebuchet.v_projectile();
 
         let dev_info = [
-            format!("average FPS: {:.3} ({:.3} ms)", avg_fps, avg_frame * 1000.0),
+            format!("average FPS: {:.2} ({:.2} ms)", avg_fps, avg_frame * 1000.0),
             format!(
                 "mouse position (pixels) = ({:+.2}, {:+.2})",
                 cursor.x, cursor.y
             ),
+            format!("screen size: {:?}", get_screen().to_string()),
             format!(
-                "camera zoom = {:.1} ({},{})",
-                2000.0 / (GAME_SIZE_X * game.camera.zoom.x),
-                1.0 / game.camera.zoom.x,
-                1.0 / game.camera.zoom.y
+                "camera zoom = {:.2} ({:.2},{:.2})",
+                (screen_width() * render.camera.zoom.x).recip() * 2000.0,
+                render.camera.zoom.x.recip(),
+                render.camera.zoom.y.recip(),
             ),
             format!(
                 "player position (meters) = ({:+.2}, {:+.2})",
@@ -71,7 +99,7 @@ async fn main() {
             ),
             format!(
                 "player altitude (meters) = {:+.2}",
-                game.player.get_altitude(&game.world)
+                game.world.get_altitude(game.player.position)
             ),
             format!(
                 "player velocity (m/s)= {:+.2} ({:+.2},{:+.2})",
@@ -80,10 +108,6 @@ async fn main() {
                 game.player.velocity.y
             ),
             format!("launch time: {}", game.time_launch),
-            format!("projectile velocity {}, {}", v_proj.x, v_proj.y),
-            format!("projectile angle {}", to_angle(v_proj)),
-            format!("projectile magnitude {}", v_proj.length()),
-            format!("{:?}", get_screen()),
         ];
 
         let mut spacing = 15.0;
