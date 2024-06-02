@@ -1,8 +1,12 @@
-use crate::{get_screen, to_angle, to_f32coords, Game};
+use crate::{to_angle, to_f32coords, Game};
 use ::glam::I64Vec2;
 use macroquad::prelude::*;
 
 const VIEW_RADIUS: f32 = 100000.0; // meters
+
+pub fn get_screen() -> Vec2 {
+    vec2(screen_width(), screen_height())
+}
 
 #[derive(Default)]
 pub struct RenderSpace {
@@ -128,7 +132,7 @@ impl Render {
                 % circ;
 
             let mut active: Vec<usize> = (r_bound..l_bound).collect();
-            if active.is_empty() {
+            if r_bound > l_bound {
                 active = (r_bound..circ).chain(0..l_bound).collect();
             }
 
@@ -209,10 +213,8 @@ impl Render {
 
         self.render_space.draw();
 
-        // Set Default Camera
-        set_default_camera();
-
         // Draw Game on Screen
+        set_default_camera();
         clear_background(BLACK);
         draw_texture_ex(
             &self.render_target.texture,

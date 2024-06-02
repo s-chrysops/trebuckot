@@ -11,10 +11,6 @@ use macroquad::prelude::*;
 
 const PHYSICS_TICK: f32 = 0.001;
 
-pub fn get_screen() -> Vec2 {
-    vec2(screen_width(), screen_height())
-}
-
 // meters to i64 coordinates
 pub fn to_i64coords(f32coords: Vec2) -> I64Vec2 {
     I64Vec2::new(

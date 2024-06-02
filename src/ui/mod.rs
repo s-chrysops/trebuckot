@@ -1,8 +1,10 @@
-use crate::game::{get_screen,Game, GameState};
+use crate::game::{Game, GameState};
+use crate::get_screen;
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets, Skin};
 
 pub mod icon;
+
 
 pub struct UI {
     main_menu_skin: Skin,
@@ -12,14 +14,11 @@ pub struct UI {
 
 impl UI {
     pub fn init() -> Self {
+        let black75 = Image::gen_image_color(1, 1, Color::from_rgba(0, 0, 0, 64));
         let main_menu_skin = {
             let window_style = root_ui()
                 .style_builder()
-                .background(Image::gen_image_color(
-                    1,
-                    1,
-                    Color::from_rgba(255, 255, 255, 64),
-                ))
+                .background(black75.clone())
                 .build();
             //let button_style = root_ui().style_builder().build();
             Skin {
@@ -30,11 +29,10 @@ impl UI {
             }
         };
         let settings_skin = {
-            let group_style = root_ui().style_builder().background(Image::gen_image_color(
-                1,
-                1,
-                Color::from_rgba(255, 255, 255, 64),
-                )).build();
+            let group_style = root_ui()
+                .style_builder()
+                .background(black75.clone())
+                .build();
             Skin {
                 group_style,
                 ..root_ui().default_skin()
@@ -89,12 +87,9 @@ impl UI {
         let window_pos = (get_screen() - window_size) / 2.0;
         root_ui().push_skin(&self.settings_skin);
         root_ui().popup(hash!(), get_screen(), |ui| {
-            if widgets::Button::new("Close")
-                .position(window_pos)
-                .ui(ui) 
-                {
-                    self.settings_on = false;
-                }
+            if widgets::Button::new("Close").position(window_pos).ui(ui) {
+                self.settings_on = false;
+            }
         });
         root_ui().pop_skin();
     }
