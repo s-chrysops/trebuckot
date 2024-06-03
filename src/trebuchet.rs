@@ -23,14 +23,14 @@ struct TrebuchetArm {
 }
 
 impl TrebuchetArm {
-    fn new(parameters: (f32, f32, f32), common_triangle: f32) -> Self {
+    fn new(long_length: f32, short_length: f32, mass: f32) -> Self {
         Self {
-            long_length:  parameters.0,
-            short_length: parameters.1,
-            center:       (parameters.0 + parameters.1) / 2.0 - parameters.1,
-            mass:         parameters.2,
-            inertia:      parameters.2 * (parameters.0 + parameters.1).powi(2) / 12.0,
-            angle:        consts::PI - common_triangle.acos(),
+            long_length,
+            short_length,
+            center:       (long_length + short_length) / 2.0 - short_length,
+            mass,
+            inertia:      mass * (long_length + short_length).powi(2) / 12.0,
+            angle:        0.0,
             velocity:     0.0,
         }
     }
@@ -45,32 +45,83 @@ struct TrebuchetWeight {
 }
 
 impl TrebuchetWeight {
-    fn new(parameters: (f32, f32), common_triangle: f32) -> Self {
+    fn new(length: f32, mass: f32) -> Self {
         Self {
-            length:   parameters.0,
-            mass:     parameters.1,
+            length,
+            mass,
             inertia:  1.0,
-            angle:    common_triangle.acos() - consts::PI,
+            angle:    0.0,
             velocity: 0.0,
         }
     }
 }
 
 struct TrebuchetSling {
-    length: f32,
-    angle:  f32,
-    velocity:     f32,
+    length:   f32,
+    angle:    f32,
+    velocity: f32,
 }
 
 impl TrebuchetSling {
-    fn new(length: f32, common_triangle: f32) -> Self {
+    fn new(length: f32) -> Self {
         Self {
             length,
-            angle:    consts::PI - common_triangle.asin(),
+            angle:    0.0,
             velocity: 0.0,
         }
     }
 }
+
+#[derive(Default)]
+pub struct TrebuchetBuilder {
+    position: I64Vec2,
+    height: Option<f32>,
+    m_proj: Option<f32>,
+
+    arm: Option<TrebuchetArm>,
+    weight: Option<TrebuchetWeight>,
+    sling: Option<TrebuchetSling>,
+}
+
+#[allow(dead_code)]
+impl TrebuchetBuilder {
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = Some(height);
+        self
+    }
+
+    pub fn m_proj(mut self, m_proj: f32) -> Self {
+        self.m_proj = Some(m_proj);
+        self
+    }
+
+    pub fn arm(mut self, long_length: f32, short_length: f32, mass: f32) -> Self {
+        self.arm = Some(TrebuchetArm::new(long_length, short_length, mass));
+        self
+    }
+
+    pub fn weight(mut self, length: f32, mass: f32) -> Self {
+        self.weight = Some(TrebuchetWeight::new(length, mass));
+        self
+    }
+
+    pub fn sling(mut self, length: f32) -> Self {
+        self.sling = Some(TrebuchetSling::new(length));
+        self
+    }
+
+    pub fn build(self) -> Trebuchet {
+        Trebuchet {
+            position: self.position,
+            height: self.height.unwrap_or(5.6),
+            m_proj: self.m_proj.unwrap_or(0.3),
+            arm: self.arm.unwrap_or(TrebuchetArm::new(8.0, 2.0, 12.0)),
+            weight: self.weight.unwrap_or(TrebuchetWeight::new(2.0, 100.0)),
+            sling: self.sling.unwrap_or(TrebuchetSling::new(8.0)),
+            state: TrebuchetState::Stage1,
+        }
+    }
+} 
 
 pub struct Trebuchet {
     pub position: I64Vec2,
@@ -84,41 +135,9 @@ pub struct Trebuchet {
     pub state: TrebuchetState,
 }
 
-impl Default for Trebuchet {
-    fn default() -> Self {
-        let arm = (8.0, 2.0, 12.0);
-        let weight = (2.0, 100.0);
-        let sling = 8.0;
-        Trebuchet::new(
-            I64Vec2::new(0, 1_630_976_000),
-            5.6,
-            arm,
-            weight,
-            sling,
-            0.3
-        )
-    }
-}
-
 impl Trebuchet {
-    pub fn new(
-        position: I64Vec2,
-        height: f32,
-        arm: (f32, f32, f32),
-        weight: (f32, f32),
-        sling: f32,
-        m_proj: f32,
-    ) -> Self {
-        let common_triangle = height / arm.0;
-        Self {
-            position,
-            height,
-            m_proj,
-            arm:    TrebuchetArm::new(arm, common_triangle),
-            weight: TrebuchetWeight::new(weight, common_triangle),
-            sling:  TrebuchetSling::new(sling, common_triangle),
-            state:  TrebuchetState::Stage1,
-        }
+    pub fn init(position: I64Vec2) -> TrebuchetBuilder {
+        TrebuchetBuilder { position, ..Default::default() }
     }
 
     pub fn armsling_point(&self) -> Vec2 {
@@ -184,7 +203,7 @@ impl Trebuchet {
         let stage: Box<dyn Fn(f32, Vec3, Vec3) -> Vec3x2> = match self.state {
 
             TrebuchetState::Stage1 => {
-                let Vec3x2(_, Vec3{x: aw_prime, ..}) = self.stage_1 ( 
+                let Vec3x2{q: _, w: Vec3{x: aw_prime, ..}} = self.stage_1 ( 
                     dt,
                     vec3(self.arm.angle, self.weight.angle, self.sling.angle),
                     vec3(self.arm.velocity, self.weight.velocity, self.sling.velocity)
@@ -214,8 +233,8 @@ impl Trebuchet {
             dt, 
             stage
         );
-        Vec3 {x: self.arm.angle, y: self.weight.angle, z: self.sling.angle}         = rk4_results.0;
-        Vec3 {x: self.arm.velocity, y: self.weight.velocity, z:self.sling.velocity} = rk4_results.1;
+        Vec3 {x: self.arm.angle, y: self.weight.angle, z: self.sling.angle}         = rk4_results.q;
+        Vec3 {x: self.arm.velocity, y: self.weight.velocity, z:self.sling.velocity} = rk4_results.w;
     }
 
     fn ground_force(&self, aw_prime: f32) -> f32 {
@@ -280,10 +299,10 @@ impl Trebuchet {
             * aw.powi(2) - (lal * aq.sin() + ls * (aq + sq).sin()) * aw_prime 
             / (ls * (aq + sq).sin());
                 
-        Vec3x2 (
-            vec3(aw + aw_prime * dt, ww + ww_prime * dt, sw + sw_prime * dt),
-            vec3(aw_prime, ww_prime, sw_prime)
-        )
+        Vec3x2 {
+            q: vec3(aw + aw_prime * dt, ww + ww_prime * dt, sw + sw_prime * dt),
+            w: vec3(aw_prime, ww_prime, sw_prime)
+        }
     }
 
     fn stage_2(&self, dt: f32, angles: Vec3, velocities: Vec3) -> Vec3x2 {
@@ -336,43 +355,46 @@ impl Trebuchet {
         let sw_prime = (r1 * m22 * m31 - r2 * m12 * m31 - r3 * (m11 * m22 - m12 * m21)) 
             / (m13 * m22 * m31 - m33 * (m11 * m22 - m12 * m21));
         
-        Vec3x2 (
-            vec3(aw + aw_prime * dt, ww + ww_prime * dt, sw + sw_prime * dt),
-            vec3(aw_prime, ww_prime, sw_prime)
-        )
+        Vec3x2 {
+            q: vec3(aw + aw_prime * dt, ww + ww_prime * dt, sw + sw_prime * dt),
+            w: vec3(aw_prime, ww_prime, sw_prime)
+        }
     }
 }
 
-// Tuple container for set of positions and velocities that can be multiplied
-struct Vec3x2(Vec3, Vec3);
+// Container for set of angular positions and velocities or their derivatives that can be multiplied
+struct Vec3x2{
+    q: Vec3,
+    w: Vec3,
+}
 impl std::ops::Mul<Vec3x2> for f32 {
     type Output = Vec3x2;
     fn mul(self, rhs: Vec3x2) -> Vec3x2 {
-        Vec3x2 (
-            Vec3 {
-                x: self.mul(rhs.0.x),
-                y: self.mul(rhs.0.y),
-                z: self.mul(rhs.0.z),
+        Vec3x2 {
+            q: Vec3 {
+                x: self.mul(rhs.q.x),
+                y: self.mul(rhs.q.y),
+                z: self.mul(rhs.q.z),
             },
-            Vec3 {
-                x: self.mul(rhs.1.x),
-                y: self.mul(rhs.1.y),
-                z: self.mul(rhs.1.z),
+            w: Vec3 {
+                x: self.mul(rhs.w.x),
+                y: self.mul(rhs.w.y),
+                z: self.mul(rhs.w.z),
             }
-        )
+        }
     }
 }
 
-fn rk4<T>(x: Vec3, y: Vec3, dt: f32, f: T) -> (Vec3, Vec3)
+fn rk4<T>(x: Vec3, y: Vec3, dt: f32, f: T) -> Vec3x2
 where
     T: Fn(f32, Vec3, Vec3) -> Vec3x2
 {
     let k1 = dt * f(dt, x, y);
-    let k2 = dt * f(dt, x + k1.0 * 0.5, y + k1.1 * 0.5);
-    let k3 = dt * f(dt, x + k1.0 * 0.5, y + k2.1 * 0.5);
-    let k4 = dt * f(dt, x + k3.0, y + k3.1);
-    (   
-        x + (k1.0 + 2.0 * k2.0 + 2.0 * k3.0 + k4.0) / 6.0,
-        y + (k1.1 + 2.0 * k2.1 + 2.0 * k3.1 + k4.1) / 6.0
-    )
+    let k2 = dt * f(dt, x + k1.q * 0.5, y + k1.w * 0.5);
+    let k3 = dt * f(dt, x + k1.q * 0.5, y + k2.w * 0.5);
+    let k4 = dt * f(dt, x + k3.q, y + k3.w);
+    Vec3x2{   
+        q: (x + (k1.q + 2.0 * k2.q + 2.0 * k3.q + k4.q) / 6.0),
+        w: (y + (k1.w + 2.0 * k2.w + 2.0 * k3.w + k4.w) / 6.0),
+    }
 }
