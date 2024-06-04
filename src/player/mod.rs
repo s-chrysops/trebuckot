@@ -42,7 +42,7 @@ impl Player {
             thrusters: None,
             stablizer: None,
 
-            move_speed: 100000.0,
+            move_speed: 1000.0,
         }
     }
 }

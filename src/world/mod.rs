@@ -47,16 +47,16 @@ impl World {
     }
 
     pub fn get_grativy(&self, point: I64Vec2) -> Vec2 {
-        let r = to_f32coords(point - self.position);
+        let r = to_meters(point - self.position);
         -r.normalize_or_zero() * GRAVITATION * self.mass / r.length_squared()
     }
 
     pub fn get_altitude(&self, point: I64Vec2) -> f32 {
-        to_f32coords(point - self.position).length() - self.radius
+        to_meters(point - self.position).length() - self.radius
     }
 
     pub fn get_terrain_idx_beneath(&self, point: I64Vec2) -> usize {
-        (self.radius / 1000.0 * to_angle(to_f32coords(point - self.position))
+        (self.radius / 1000.0 * to_angle(to_meters(point - self.position))
             % self.terrain.circ as f32) as usize
     }
 }
