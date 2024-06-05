@@ -4,7 +4,14 @@ use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets, Skin};
 
 pub mod icon;
+// mod main_menu;
 
+// enum Menu {
+//     Main,
+//     Pause,
+//     Landed,
+//     Settings,
+// }
 
 pub struct UI {
     main_menu_skin: Skin,
@@ -14,7 +21,8 @@ pub struct UI {
 
 impl UI {
     pub fn init() -> Self {
-        let black75 = Image::gen_image_color(1, 1, Color::from_rgba(0, 0, 0, 64));
+        let black75 = Image::gen_image_color(1, 1, color_u8!(0, 0, 0, 64));
+
         let main_menu_skin = {
             let window_style = root_ui()
                 .style_builder()
@@ -28,6 +36,7 @@ impl UI {
                 ..root_ui().default_skin()
             }
         };
+
         let settings_skin = {
             let group_style = root_ui()
                 .style_builder()
@@ -38,6 +47,7 @@ impl UI {
                 ..root_ui().default_skin()
             }
         };
+        
         Self {
             main_menu_skin,
             settings_skin,
@@ -106,7 +116,7 @@ impl UI {
         });
     }
 
-    pub fn landed_screen(&self, game: &mut Game) {
+    pub fn landed_menu(&self, game: &mut Game) {
         widgets::Popup::new(hash!(), get_screen()).ui(&mut root_ui(), |ui| {
             if widgets::Button::new("Restart")
                 .position(get_screen() / 2.0 - vec2(100.0, 25.0))

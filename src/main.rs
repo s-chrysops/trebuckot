@@ -45,7 +45,7 @@ async fn main() {
     let mut dev_info = DevInfo::init();
 
     let mut time_acc = 0.0;
-
+    
     loop {
         match game.state {
             GameState::MainMenu => {

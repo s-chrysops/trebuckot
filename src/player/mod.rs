@@ -1,5 +1,4 @@
-use glam::I64Vec2;
-use macroquad::math::Vec2;
+use macroquad::math::{I64Vec2, Vec2};
 
 mod upgrades;
 pub use upgrades::*;

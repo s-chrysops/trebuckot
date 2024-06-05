@@ -1,12 +1,11 @@
-use glam::I64Vec2;
-use macroquad::math::Vec2;
+use macroquad::math::{I64Vec2, Vec2};
 
 use crate::{to_i64coords, Game, GameState};
 
 pub fn do_physics(game: &mut Game, tick: f32) {
     let terrain_idx = game.world.get_terrain_idx_beneath(game.player.position);
-    let terrain_a = game.world.terrain.upper[terrain_idx];
-    let terrain_b = game.world.terrain.upper[(terrain_idx + 1) % game.world.terrain.circ];
+    let terrain_a = game.world.terrain.surface[terrain_idx];
+    let terrain_b = game.world.terrain.surface[(terrain_idx + 1) % game.world.terrain.circ];
 
     // Apply gravity if player above terrain
     if orientation(terrain_a, terrain_b, game.player.position) == 1 {
@@ -16,11 +15,7 @@ pub fn do_physics(game: &mut Game, tick: f32) {
     let displacement =
         to_i64coords((game.player.velocity * tick) + 0.5 * game.player.acceleration * tick.powi(2));
 
-    let collision = orientation(
-        terrain_a,
-        terrain_b,
-        game.player.position + displacement,
-    );
+    let collision = orientation(terrain_a, terrain_b, game.player.position + displacement);
 
     if collision != 1 {
         game.player.position = get_intersection(
@@ -70,7 +65,7 @@ fn get_intersection(a: I64Vec2, b: I64Vec2, c: I64Vec2, d: I64Vec2) -> Option<I6
     let ydiff = I64Vec2::new(a.y - b.y, c.y - d.y).as_dvec2();
     let div = xdiff.perp_dot(ydiff);
     if div == 0.0 {
-        return None
+        return None;
     }
     let dets = I64Vec2::new(a.perp_dot(b), c.perp_dot(d)).as_dvec2();
     let x = dets.perp_dot(xdiff) / div;

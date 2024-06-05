@@ -1,19 +1,18 @@
 use crate::game::*;
-use glam::I64Vec2;
 use macroquad::math::*;
 use terrain::*;
 
 pub mod perlin;
-mod terrain;
+pub mod terrain;
 
 const GRAVITATION: f32 = 6.6743e-11;
 
 #[allow(dead_code)]
 pub enum WorldClass {
-    Minshara,
-    Planet,
+    Minshara(Option<Vec<(usize, TerrainClass)>>),
+    Desert,
     Demon,
-    Planetoid,
+    Moon,
     Gas,
     Star,
 }
@@ -41,7 +40,7 @@ impl World {
             position,
             radius,
             mass,
-            terrain: Terrain::new(position, radius),
+            terrain: Terrain::new(position, radius, &class),
             class,
         }
     }

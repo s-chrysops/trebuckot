@@ -73,6 +73,11 @@ impl DevInfo {
                 game.player.velocity.y
             ),
             format!("launch time: {}", game.time_launch),
+            format!(
+                "render space position: {:+.2}, {:+.2}",
+                render.render_space.position.x as f32 / 256.0,
+                render.render_space.position.y as f32 / 256.0,
+            ),
         ];
 
         let mut spacing = 15.0;

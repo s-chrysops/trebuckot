@@ -1,7 +1,7 @@
-use crate::{to_angle, to_meters, trebuchet::Trebuchet, world::World, Game};
-use ::glam::I64Vec2;
+use crate::{to_angle, to_i64coords, to_meters, trebuchet::Trebuchet, world::World, Game};
 use macroquad::prelude::*;
 
+const TERRAIN_DEPTH: f32 = 100_000.0;
 const VIEW_RADIUS: f32 = 100000.0; // meters
 
 pub fn get_screen() -> Vec2 {
@@ -154,8 +154,9 @@ impl Render {
     }
 
     fn draw_world(&self, world: &World) {
-        let surface = &world.terrain.upper;
+        let surface = &world.terrain.surface;
         let circ = world.terrain.circ;
+        let radius_bot = world.radius - TERRAIN_DEPTH;
         let terrain_idx = world.get_terrain_idx_beneath(self.render_space.position);
 
         let l_scan = surface
@@ -180,12 +181,27 @@ impl Render {
         }
 
         active.into_iter().for_each(|point_idx| {
-            let u1 = world.terrain.upper[point_idx];
-            let l1 = world.terrain.lower[point_idx];
-            let u2 = world.terrain.upper[(point_idx + 1) % circ];
-            let l2 = world.terrain.lower[(point_idx + 1) % circ];
-            let s1 = world.terrain.sea[point_idx];
-            let s2 = world.terrain.sea[(point_idx + 1) % circ];
+            let next_idx = (point_idx + 1) % circ;
+            let u1 = world.terrain.surface[point_idx];
+            let u2 = world.terrain.surface[next_idx];
+
+            let l1 = to_i64coords(polar_to_cartesian(
+                radius_bot,
+                point_idx as f32 * 1000.0 / world.radius,
+            )) + world.position;
+            let l2 = to_i64coords(polar_to_cartesian(
+                radius_bot,
+                next_idx as f32 * 1000.0 / world.radius,
+            )) + world.position;
+
+            let s1 = to_i64coords(polar_to_cartesian(
+                world.radius,
+                point_idx as f32 * 1000.0 / world.radius,
+            )) + world.position;
+            let s2 = to_i64coords(polar_to_cartesian(
+                world.radius,
+                next_idx as f32 * 1000.0 / world.radius,
+            )) + world.position;
 
             // Draw water
             draw_triangle(

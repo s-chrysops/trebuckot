@@ -4,11 +4,11 @@ use crate::{
     trebuchet::Trebuchet,
     world::*,
 };
-use ::glam::I64Vec2;
 use core::f32::consts;
 use macroquad::prelude::*;
+use terrain::TerrainClass;
 
-const START_POINT: I64Vec2 = I64Vec2::new(0, 1_630_976_000);
+const START_POINT: I64Vec2 = i64vec2(0, 1_630_976_000);
 
 // meters to i64 coordinates
 pub fn to_i64coords(f32coords: Vec2) -> I64Vec2 {
@@ -55,12 +55,20 @@ pub struct Game {
 impl Game {
     pub async fn init() -> Self {
         // BEarth
+        let terra: Vec<(usize, TerrainClass)> = vec![
+            (7500, TerrainClass::Rocky),
+            (15000, TerrainClass::Desert),
+            (22500, TerrainClass::Ocean),
+            (30000, TerrainClass::Hills),
+            (40030, TerrainClass::Plain),
+        ];
+
         let world = World::new(
-            IVec2::default(),
-            I64Vec2::new(0, 0),
+            IVec2::ZERO,
+            I64Vec2::ZERO,
             6_371_000.0,
             5.972e+24,
-            WorldClass::Minshara,
+            WorldClass::Minshara(Some(terra)),
         );
 
         let mut trebuchet = Trebuchet::init(START_POINT).build();

@@ -1,6 +1,5 @@
-use glam::I64Vec2;
 use core::f32::consts;
-use macroquad::math::{Vec2, Vec3, vec2, vec3};
+use macroquad::math::{I64Vec2, Vec2, Vec3, vec2, vec3};
 use crate::{to_angle, to_i64coords};
 
 const GRAVITY: f32 = 9.81;
