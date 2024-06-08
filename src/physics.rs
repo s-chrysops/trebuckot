@@ -1,6 +1,7 @@
 use macroquad::math::{I64Vec2, Vec2};
+use crate::utils::*;
 
-use crate::{to_i64coords, Game, GameState};
+use crate::{Game, GameState};
 
 pub fn do_physics(game: &mut Game, tick: f32) {
     let terrain_idx = game.world.get_terrain_idx_beneath(game.player.position);
@@ -24,7 +25,7 @@ pub fn do_physics(game: &mut Game, tick: f32) {
             game.player.position,
             game.player.position + displacement,
         )
-        .unwrap();
+        .unwrap_or(game.player.position);
         game.player.velocity = Vec2::ZERO;
         game.state = GameState::Landed;
     } else {

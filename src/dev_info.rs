@@ -78,6 +78,7 @@ impl DevInfo {
                 render.render_space.position.x as f32 / 256.0,
                 render.render_space.position.y as f32 / 256.0,
             ),
+            format!("closest terrain index: {}", game.world.get_terrain_idx_beneath(render.render_space.position))
         ];
 
         let mut spacing = 15.0;

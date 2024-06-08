@@ -1,4 +1,4 @@
-use crate::game::*;
+use crate::utils::*;
 use macroquad::math::*;
 use terrain::*;
 

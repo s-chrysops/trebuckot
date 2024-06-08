@@ -1,4 +1,4 @@
-use crate::game::*;
+use crate::utils::*;
 use macroquad::math::*;
 use std::f32::consts;
 
@@ -64,6 +64,7 @@ fn generate_height_map(circ: usize, _class: WorldClass, sections: &[TerrainClass
     let mut current_idx: usize = 0;
     let mut transition_points: Vec<usize> = Vec::with_capacity(sections.len());
     let mut noise_parameters: Vec<Vec<(f32, f32)>> = Vec::with_capacity(sections.len());
+    let mut oceans: Vec<(usize, usize)> = Vec::new();
 
     sections.iter().for_each(|section| {
         match section {
@@ -84,6 +85,7 @@ fn generate_height_map(circ: usize, _class: WorldClass, sections: &[TerrainClass
                 noise_parameters.push(vec![(AMPL_ROCKY, FREQ_ROCKY); *length])
             }
             TerrainClass::Ocean(length) => {
+                oceans.push((current_idx % circ, *length));
                 current_idx += length;
                 noise_parameters.push(vec![(-AMPL_HILLS, FREQ_ROCKY); *length])
             }
@@ -95,8 +97,18 @@ fn generate_height_map(circ: usize, _class: WorldClass, sections: &[TerrainClass
         .iter()
         .flatten()
         .enumerate()
-        .map(|(i, (ampl, freq))| noise.get(i as f32, *ampl, *freq) + ampl * 2.0)
+        .map(|(i, (ampl, freq))| noise.get(i as f32, *ampl, *freq) + ampl)
         .collect();
+
+    for (start, length) in oceans {
+        let end = start + length;
+        let mut i = start + 1;
+        let factor = consts::PI / length as f32;
+        while i < end {
+            height_map[i] -= 4000.0 * ((i - start) as f32 * factor).sin();
+            i += 1;
+        }
+    }
 
     transition_points.iter().for_each(|p| {
         smooth_at(&mut height_map, *p);

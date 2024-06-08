@@ -14,6 +14,7 @@ mod resources;
 mod trebuchet;
 mod ui;
 mod world;
+mod utils;
 
 const PHYSICS_TICK: f32 = 0.001;
 
