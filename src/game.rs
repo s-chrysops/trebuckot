@@ -1,14 +1,9 @@
-use crate::{
-    player::Player,
-    resources::*,
-    trebuchet::Trebuchet,
-    world::*,
-};
+use crate::{player::Player, resources::*, trebuchet::Trebuchet, world::*};
 use core::f32::consts;
 use macroquad::prelude::*;
 use terrain::TerrainClass;
 
-const START_POINT: I64Vec2 = i64vec2(0, 1_630_976_000);
+const START_POINT: I64Vec2 = i64vec2(0, 1_631_100_000);
 
 // meters to i64 coordinates
 pub fn to_i64coords(f32coords: Vec2) -> I64Vec2 {
@@ -54,13 +49,18 @@ pub struct Game {
 
 impl Game {
     pub async fn init() -> Self {
+        use TerrainClass as TC;
         // BEarth
-        let terra: Vec<(usize, TerrainClass)> = vec![
-            (7500, TerrainClass::Rocky),
-            (15000, TerrainClass::Desert),
-            (22500, TerrainClass::Ocean),
-            (30000, TerrainClass::Hills),
-            (40030, TerrainClass::Plain),
+        let terra = [
+            TC::Ocean(4000),  // Batlantic Ocean
+            TC::Plain(8000),  // North Bamerica
+            TC::Ocean(12800), // Bacific Ocean
+            TC::Desert(3000), // Baustralia
+            TC::Ocean(1000),  // Bindian Ocean
+            TC::Rocky(9000),  // Beurasia
+            TC::Ocean(130),   // Benglish Channel
+            TC::Hills(500),   // Great Beantain
+            TC::Ocean(1600),  // Batlantic cont.
         ];
 
         let world = World::new(
@@ -68,7 +68,8 @@ impl Game {
             I64Vec2::ZERO,
             6_371_000.0,
             5.972e+24,
-            WorldClass::Minshara(Some(terra)),
+            WorldClass::Minshara,
+            Some(&terra),
         );
 
         let mut trebuchet = Trebuchet::init(START_POINT).build();

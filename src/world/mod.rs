@@ -8,8 +8,9 @@ pub mod terrain;
 const GRAVITATION: f32 = 6.6743e-11;
 
 #[allow(dead_code)]
+#[derive(Clone, Copy)]
 pub enum WorldClass {
-    Minshara(Option<Vec<(usize, TerrainClass)>>),
+    Minshara,
     Desert,
     Demon,
     Moon,
@@ -34,13 +35,14 @@ impl World {
         radius: f32,
         mass: f32,
         class: WorldClass,
+        preset: Option<&[TerrainClass]>
     ) -> Self {
         Self {
             system,
             position,
             radius,
             mass,
-            terrain: Terrain::new(position, radius, &class),
+            terrain: Terrain::new(position, radius, class, preset),
             class,
         }
     }
