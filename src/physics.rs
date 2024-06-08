@@ -1,9 +1,59 @@
-use macroquad::math::{I64Vec2, Vec2};
-use crate::utils::*;
+use macroquad::prelude::*;
+use crate::{trebuchet, utils::*, Game, GameState};
 
-use crate::{Game, GameState};
+const PHYSICS_TICK: f32 = 0.001;
 
-pub fn do_physics(game: &mut Game, tick: f32) {
+pub struct Physics {
+    time_acc: f32,
+}
+
+impl Physics {
+    pub fn init() -> Self {
+        Self {time_acc: 0.0}
+    }
+
+    pub fn update(&mut self, game: &mut Game) {
+        if is_key_released(KeyCode::Space) {
+            game.state = GameState::Launched;
+        }
+        if game.state != GameState::Launched {
+            return;
+        }
+
+        self.time_acc += get_frame_time();
+        while self.time_acc > PHYSICS_TICK {
+            // Basic movement
+            if is_key_down(KeyCode::W) {
+                game.player.acceleration.y += game.player.move_speed;
+            }
+            if is_key_down(KeyCode::S) {
+                game.player.acceleration.y -= game.player.move_speed;
+            }
+            if is_key_down(KeyCode::A) {
+                game.player.acceleration.x -= game.player.move_speed;
+            }
+            if is_key_down(KeyCode::D) {
+                game.player.acceleration.x += game.player.move_speed;
+            }
+            if is_key_down(KeyCode::Escape) {
+                game.state = GameState::Paused;
+            }
+
+            game.trebuchet.run(PHYSICS_TICK);
+            if let trebuchet::TrebuchetState::Stage3 = game.trebuchet.state {
+                do_physics(game, PHYSICS_TICK);
+            } else {
+                game.player.position = game.trebuchet.projectile_position();
+                game.player.velocity = game.trebuchet.v_projectile();
+            }
+
+            game.time_launch += PHYSICS_TICK;
+            self.time_acc -= PHYSICS_TICK;
+        }
+    }
+}
+
+fn do_physics(game: &mut Game, tick: f32) {
     let terrain_idx = game.world.get_terrain_idx_beneath(game.player.position);
     let terrain_a = game.world.terrain.surface[terrain_idx];
     let terrain_b = game.world.terrain.surface[(terrain_idx + 1) % game.world.terrain.circ];
