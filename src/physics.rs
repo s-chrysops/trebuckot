@@ -1,5 +1,5 @@
-use macroquad::prelude::*;
 use crate::{trebuchet, utils::*, Game, GameState};
+use macroquad::prelude::*;
 
 const PHYSICS_TICK: f32 = 0.001;
 
@@ -8,13 +8,13 @@ pub struct Physics {
 }
 
 impl Physics {
-    pub fn init() -> Self {
-        Self {time_acc: 0.0}
+    pub async fn init() -> Physics {
+        Physics { time_acc: 0.0 }
     }
 
     pub fn update(&mut self, game: &mut Game) {
-        if is_key_released(KeyCode::Space) {
-            game.state = GameState::Launched;
+        if is_key_down(KeyCode::Escape) && game.state == GameState::Launched {
+            game.state = GameState::Paused;
         }
         if game.state != GameState::Launched {
             return;
@@ -22,6 +22,8 @@ impl Physics {
 
         self.time_acc += get_frame_time();
         while self.time_acc > PHYSICS_TICK {
+            self.time_acc -= PHYSICS_TICK;
+
             // Basic movement
             if is_key_down(KeyCode::W) {
                 game.player.acceleration.y += game.player.move_speed;
@@ -35,20 +37,15 @@ impl Physics {
             if is_key_down(KeyCode::D) {
                 game.player.acceleration.x += game.player.move_speed;
             }
-            if is_key_down(KeyCode::Escape) {
-                game.state = GameState::Paused;
-            }
 
             game.trebuchet.run(PHYSICS_TICK);
-            if let trebuchet::TrebuchetState::Stage3 = game.trebuchet.state {
-                do_physics(game, PHYSICS_TICK);
-            } else {
+            if game.trebuchet.state != trebuchet::TrebuchetState::Stage3 {
                 game.player.position = game.trebuchet.projectile_position();
                 game.player.velocity = game.trebuchet.v_projectile();
+                continue;
             }
 
-            game.time_launch += PHYSICS_TICK;
-            self.time_acc -= PHYSICS_TICK;
+            do_physics(game, PHYSICS_TICK);
         }
     }
 }
@@ -65,28 +62,35 @@ fn do_physics(game: &mut Game, tick: f32) {
 
     let displacement =
         to_i64coords((game.player.velocity * tick) + 0.5 * game.player.acceleration * tick.powi(2));
+    let next_position = game.player.position + displacement;
 
-    let collision = orientation(terrain_a, terrain_b, game.player.position + displacement);
-
-    if collision != 1 {
-        game.player.position = get_intersection(
-            terrain_a,
-            terrain_b,
-            game.player.position,
-            game.player.position + displacement,
-        )
-        .unwrap_or(game.player.position);
+    if orientation(terrain_a, terrain_b, next_position) != 1 {
+        game.player.position =
+            get_intersection(terrain_a, terrain_b, game.player.position, next_position)
+                .unwrap_or(game.player.position);
         game.player.velocity = Vec2::ZERO;
-        game.state = GameState::Landed;
-    } else {
-        game.player.position += displacement;
+        game.player.acceleration = Vec2::ZERO;
 
-        // Leapfrog intergration
-        let new_acceleration = game.world.get_grativy(game.player.position);
-        game.player.velocity += 0.5 * (game.player.acceleration + new_acceleration) * tick;
+        game.state = GameState::Landed;
+
+        return;
     }
 
+    game.player.position = next_position;
+
+    // Leapfrog intergration
+    let next_acceleration = game.world.get_grativy(next_position);
+    game.player.velocity += 0.5 * (game.player.acceleration + next_acceleration) * tick;
+
     game.player.acceleration = Vec2::ZERO;
+
+    game.stats.time += PHYSICS_TICK;
+    game.stats.distance += to_meters(displacement).length();
+    game.stats.max_altitude = game
+        .stats
+        .max_altitude
+        .max(game.world.get_altitude(game.player.position));
+    game.stats.max_speed = game.stats.max_speed.max(game.player.velocity.length())
 }
 
 // General case do line segments (a, b), (c, d) intersect
@@ -99,10 +103,13 @@ fn do_physics(game: &mut Game, tick: f32) {
 //     o1 != o2 && o3 != o4
 // }
 
-// Orientation of ordered points
-// clockwise        ->  1
-// anti-clockwise   -> -1
-// colinear         ->  0
+/// Orientation of ordered points
+///
+/// clockwise        ->  1
+///
+/// anti-clockwise   -> -1
+///
+/// colinear         ->  0
 fn orientation(p: I64Vec2, q: I64Vec2, r: I64Vec2) -> i8 {
     ((q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)).signum() as i8
 }

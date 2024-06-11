@@ -1,4 +1,4 @@
-use crate::{trebuchet::Trebuchet, utils::*, world::World, Game};
+use crate::{trebuchet::Trebuchet, utils::*, world::World, Game, GameState};
 use macroquad::prelude::*;
 
 const TERRAIN_DEPTH: f32 = 100_000.0;
@@ -49,10 +49,12 @@ pub struct Render {
     freecam_on:       bool,
     prev_screen:      Vec2,
     smooth_zoom:      Vec2,
+
+    font: Font,
 }
 
 impl Render {
-    pub async fn init() -> Self {
+    pub async fn init() -> Result<Render, macroquad::Error> {
         let render_target = render_target(screen_width() as u32, screen_height() as u32);
         render_target.texture.set_filter(FilterMode::Linear);
 
@@ -64,8 +66,11 @@ impl Render {
         let smooth_zoom = camera.zoom;
         set_camera(&camera);
 
+        let font = load_ttf_font("VT323.ttf").await?;
+
         let render_space = RenderSpace::init();
-        Self {
+
+        Ok(Render {
             camera,
             render_target,
 
@@ -73,13 +78,25 @@ impl Render {
             freecam_on: false,
             prev_screen: get_screen(),
             smooth_zoom,
-        }
+
+            font,
+        })
     }
 
     pub fn update(&mut self, game: &Game) {
         match mouse_wheel() {
             (_x, y) if y != 0.0 => {
                 self.smooth_zoom *= 10.0_f32.powf(y.signum() / 4.0);
+                self.smooth_zoom = self.smooth_zoom.clamp(
+                    vec2(
+                        (screen_width() * 50.0).recip(),
+                        -(screen_height() / 20000.0).recip(),
+                    ),
+                    vec2(
+                        (screen_width() / 20000.0).recip(),
+                        -(screen_height() * 50.0).recip(),
+                    ),
+                )
             }
             _ => (),
         }
@@ -91,9 +108,10 @@ impl Render {
         } else {
             25600
         };
+        
+        self.camera.zoom += (self.smooth_zoom - self.camera.zoom) * 0.1;
 
         let rel_pos = self.render_space.position - game.world.position;
-        self.camera.zoom += (self.smooth_zoom - self.camera.zoom) * 0.1;
         self.camera.rotation = 90.0 - to_angle(to_meters(rel_pos)).to_degrees();
 
         if self.freecam_on {
@@ -156,6 +174,73 @@ impl Render {
                 ..Default::default()
             },
         );
+
+        // HUD
+        match game.state {
+            GameState::PreLaunch => {}
+            GameState::Launched => {}
+            GameState::Landed => {
+                draw_rectangle(
+                    0.0,
+                    0.0,
+                    screen_width(),
+                    screen_height(),
+                    color_u8!(0, 0, 0, 64),
+                );
+                let margin_x = screen_width() * 0.25;
+                let margin_y = screen_height() * 0.25;
+                let spacing = 60.0;
+                let params = TextParams {
+                    font: Some(&self.font),
+                    font_size: 48,
+                    color: WHITE,
+                    ..Default::default()
+                };
+
+                for (i, stat) in game.stats.as_vec().iter().enumerate() {
+                    let stat_fmt = format!("{:.2}{}", stat.value, stat.unit);
+                    let stat_width = measure_text(&stat_fmt, Some(&self.font), 48, 1.0).width;
+                    draw_text_ex(
+                        &stat.field,
+                        margin_x,
+                        (spacing * i as f32) + margin_y,
+                        params.clone(),
+                    );
+                    draw_text_ex(
+                        &stat_fmt,
+                        screen_width() - margin_x - stat_width,
+                        (spacing * i as f32) + margin_y,
+                        params.clone(),
+                    );
+                }
+
+                let re = "Research Earned";
+                let points = game.stats.crunch().to_string();
+                let re_width = measure_text(re, Some(&self.font), 48, 1.0).width;
+                let points_width = measure_text(&points, Some(&self.font), 48, 1.0).width;
+                draw_text_ex(
+                    "Research Earned",
+                    (screen_width() - re_width) / 2.0,
+                    screen_height() - margin_y - spacing,
+                    params.clone(),
+                );
+                draw_text_ex(
+                    &points,
+                    (screen_width() - points_width) / 2.0,
+                    screen_height() - margin_y,
+                    params.clone(),
+                );
+            }
+            GameState::Paused => {
+                draw_rectangle(
+                    0.0,
+                    0.0,
+                    screen_width(),
+                    screen_height(),
+                    color_u8!(0, 0, 0, 64),
+                );
+            }
+        }
     }
 
     fn draw_world(&self, world: &World) {

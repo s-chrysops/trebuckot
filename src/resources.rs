@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 #[derive(Default)]
 pub struct Resources {
-    research: u32,
-    rocks:    u32,
-    beans:    u32,
+    pub research: u32,
+    pub rocks:    u32,
+    pub beans:    u32,
 }

@@ -52,7 +52,7 @@ impl DevInfo {
             ),
             format!("screen size: {:?}", get_screen().to_string()),
             format!(
-                "camera zoom = {:.2} ({:.2},{:.2})",
+                "camera zoom = {:.1} ({:.2},{:.2})",
                 (screen_width() * render.camera.zoom.x).recip() * 2000.0,
                 render.camera.zoom.x.recip(),
                 render.camera.zoom.y.recip(),
@@ -72,16 +72,20 @@ impl DevInfo {
                 game.player.velocity.x,
                 game.player.velocity.y
             ),
-            format!("launch time: {}", game.time_launch),
             format!(
                 "render space position: {:+.2}, {:+.2}",
                 render.render_space.position.x as f32 / 256.0,
                 render.render_space.position.y as f32 / 256.0,
             ),
-            format!("closest terrain index: {}", game.world.get_terrain_idx_beneath(render.render_space.position))
+            format!("closest terrain index: {}", game.world.get_terrain_idx_beneath(render.render_space.position)),
+            format!("launch time: {:.2}", game.stats.time),
+            format!("   distance: {:.2}", game.stats.distance),
+            format!("max_altitude {:.2}", game.stats.max_altitude),
+            format!("  max_speed: {:.2}", game.stats.max_speed),
+            format!("gravity: {}", game.world.get_grativy(game.player.position).length())
         ];
 
-        let mut spacing = 15.0;
+        let mut spacing = screen_height() + 10.0 - 20.0 * dev_info.len() as f32;
         for line in dev_info.iter() {
             draw_text(line.as_str(), 10.0, spacing, 20.0, BLACK);
             spacing += 20.0
