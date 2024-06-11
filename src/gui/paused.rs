@@ -2,7 +2,7 @@ use crate::{get_screen, Game, GameState, Scene};
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets};
 
-pub async fn pause_menu(game: &mut Game) -> Scene {
+pub async fn paused(game: &mut Game) -> Scene {
     let button_size = vec2(200.0, 50.0);
     let mut next_scene = None;
     widgets::Popup::new(hash!(), get_screen()).ui(&mut root_ui(), |ui| {

@@ -1,7 +1,5 @@
 use macroquad::math::{I64Vec2, Vec2};
-
-mod upgrades;
-pub use upgrades::*;
+use super::upgrades::*;
 
 //#[derive(Default)]
 pub struct Player {

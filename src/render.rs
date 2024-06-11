@@ -1,44 +1,14 @@
-use crate::{trebuchet::Trebuchet, utils::*, world::World, Game, GameState};
+use crate::{game::*, utils::*, trebuchet::*, world::*};
 use macroquad::prelude::*;
+use render_space::RenderSpace;
 
 const TERRAIN_DEPTH: f32 = 100_000.0;
-const VIEW_RADIUS: f32 = 100000.0; // meters
+
+pub mod icon;
+mod render_space;
 
 pub fn get_screen() -> Vec2 {
     vec2(screen_width(), screen_height())
-}
-
-#[derive(Default)]
-pub struct RenderSpace {
-    pub position: I64Vec2,
-    radius:       f32,
-}
-
-impl RenderSpace {
-    pub fn init() -> Self {
-        Self {
-            position: I64Vec2::ZERO,
-            radius:   VIEW_RADIUS * 256.0,
-        }
-    }
-
-    pub fn within(&self, point: I64Vec2) -> bool {
-        (point - self.position).as_vec2().length() < self.radius
-    }
-
-    pub fn to_screen(&self, point: I64Vec2) -> Vec2 {
-        to_meters(point - self.position) + get_screen() / 2.0
-    }
-
-    pub fn draw(&self) {
-        draw_circle_lines(
-            screen_width() / 2.0,
-            screen_height() / 2.0,
-            self.radius / 256.0,
-            50.0,
-            RED,
-        );
-    }
 }
 
 pub struct Render {
@@ -66,9 +36,8 @@ impl Render {
         let smooth_zoom = camera.zoom;
         set_camera(&camera);
 
-        let font = load_ttf_font("VT323.ttf").await?;
-
         let render_space = RenderSpace::init();
+        let font = load_ttf_font("VT323.ttf").await?;
 
         Ok(Render {
             camera,
@@ -108,7 +77,7 @@ impl Render {
         } else {
             25600
         };
-        
+
         self.camera.zoom += (self.smooth_zoom - self.camera.zoom) * 0.1;
 
         let rel_pos = self.render_space.position - game.world.position;

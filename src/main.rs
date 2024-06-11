@@ -9,12 +9,8 @@ mod dev_info;
 mod game;
 mod gui;
 mod physics;
-mod player;
 mod render;
-mod resources;
-mod trebuchet;
 mod utils;
-mod world;
 
 fn window_conf() -> Conf {
     Conf {
@@ -29,7 +25,7 @@ fn window_conf() -> Conf {
             swap_interval: None,
             ..Default::default()
         },
-        icon: Some(gui::icon::set()),
+        icon: Some(render::icon::set()),
         sample_count: 0,
         ..Default::default()
     }
@@ -39,9 +35,9 @@ fn window_conf() -> Conf {
 async fn main() -> Result<(), macroquad::Error> {
     set_pc_assets_folder("assets");
     let mut game = Game::init().await;
+    let mut gui = Gui::init().await?;
     let mut physics = Physics::init().await;
     let mut render = Render::init().await?;
-    let mut gui = Gui::init().await?;
 
     let mut dev_info = DevInfo::init();
     loop {

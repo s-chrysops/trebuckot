@@ -2,7 +2,7 @@ use crate::{get_screen, Game, Scene};
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets};
 
-pub async fn landed_menu(game: &mut Game) -> Scene {
+pub async fn landed(game: &mut Game) -> Scene {
     let window_size = vec2(800.0, 600.0);
     let window_pos = (get_screen() - window_size) / 2.0;
     let button_size = vec2(200.0, 60.0);

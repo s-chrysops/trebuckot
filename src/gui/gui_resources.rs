@@ -1,43 +1,15 @@
-use crate::game::Game;
-use crate::GameState;
-use macroquad::prelude::*;
-use macroquad::ui::{root_ui, Skin};
+// use macroquad::prelude::*;
+use macroquad::{color::*, color_u8, texture::Image, ui::{root_ui, Skin}};
 
-use landed_ui::landed_menu;
-use main_menu::main_menu;
-use pause_menu::pause_menu;
-use prelaunch_ui::prelaunch_ui;
-use settings::settings;
-
-pub mod icon;
-mod landed_ui;
-mod main_menu;
-mod pause_menu;
-mod prelaunch_ui;
-mod settings;
-
-#[derive(Debug, Clone)]
-pub enum Scene {
-    MainMenu,
-    Data,
-    Credits,
-    Paused,
-    PreLaunch,
-    Launched,
-    Landed,
-    Settings(Box<Scene>),
+pub struct GuiResources {
+    pub title_skin:     Skin,
+    pub prelaunch_skin: Skin,
+    pub landed_skin:    Skin,
+    pub settings_skin:  Skin,
 }
 
-pub struct Gui {
-    scene:          Scene,
-    main_menu_skin: Skin,
-    prelaunch_skin: Skin,
-    landed_skin:    Skin,
-    settings_skin:  Skin,
-}
-
-impl Gui {
-    pub async fn init() -> Result<Gui, macroquad::Error> {
+impl GuiResources {
+    pub async fn init() -> Result<GuiResources, macroquad::Error> {
         let black75 = Image::gen_image_color(1, 1, color_u8!(0, 0, 0, 64));
 
         let main_menu_skin = {
@@ -52,7 +24,7 @@ impl Gui {
                 .style_builder()
                 .background(Image::from_file_with_format(
                     include_bytes!("../../assets/ui/title.png"),
-                    Some(ImageFormat::Png),
+                    None,
                 )?)
                 .build();
             let group_style = root_ui()
@@ -127,42 +99,11 @@ impl Gui {
             }
         };
 
-        Ok(Gui {
-            scene: Scene::MainMenu,
-            main_menu_skin,
+        Ok(GuiResources {
+            title_skin: main_menu_skin,
             prelaunch_skin,
             landed_skin,
             settings_skin,
         })
-    }
-
-    pub async fn update(&mut self, game: &mut Game) {
-        self.scene = match &self.scene {
-            Scene::MainMenu => {
-                root_ui().push_skin(&self.main_menu_skin);
-                main_menu(game).await
-            }
-            Scene::Data => todo!(),
-            Scene::Credits => todo!(),
-            Scene::Paused => pause_menu(game).await,
-            Scene::PreLaunch => {
-                root_ui().push_skin(&self.prelaunch_skin);
-                prelaunch_ui(game).await
-            }
-            Scene::Launched => match game.state {
-                GameState::Paused => Scene::Paused,
-                GameState::Landed => Scene::Landed,
-                _ => Scene::Launched,
-            },
-            Scene::Landed => {
-                root_ui().push_skin(&self.landed_skin);
-                landed_menu(game).await
-            }
-            Scene::Settings(last_scene) => {
-                root_ui().push_skin(&self.settings_skin);
-                settings(last_scene.clone()).await
-            }
-        };
-        root_ui().pop_skin();
     }
 }
