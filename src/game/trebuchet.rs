@@ -140,50 +140,31 @@ impl Trebuchet {
     }
 
     pub fn armsling_point(&self) -> Vec2 {
-        vec2(
-            -self.arm.long_length * self.arm.angle.sin(),
-            self.arm.long_length * self.arm.angle.cos(),
-        )
+        Vec2::from_angle(self.arm.angle).rotate(Vec2::Y * self.arm.long_length)
     }
 
     pub fn armweight_point(&self) -> Vec2 {
-        vec2(
-            self.arm.short_length * self.arm.angle.sin(),
-            -self.arm.short_length * self.arm.angle.cos(),
-        )
+        Vec2::from_angle(self.arm.angle).rotate(Vec2::NEG_Y * self.arm.short_length)
     }
 
     pub fn sling_point(&self) -> Vec2 {
-        vec2(
-            (-self.arm.long_length * self.arm.angle.sin())
-                - (self.sling.length * (self.arm.angle + self.sling.angle).sin()),
-            (self.arm.long_length * self.arm.angle.cos())
-                + (self.sling.length * (self.arm.angle + self.sling.angle).cos()),
-        )
+        Vec2::from_angle(self.arm.angle + self.sling.angle).rotate(Vec2::Y * self.sling.length)
+            + self.armsling_point()
     }
 
     pub fn weight_point(&self) -> Vec2 {
-        vec2(
-            (self.arm.short_length * self.arm.angle.sin())
-                + (self.weight.length * (self.arm.angle + self.weight.angle).sin()),
-            (-self.arm.short_length * self.arm.angle.cos())
-                - (self.weight.length * (self.arm.angle + self.weight.angle).cos()),
-        )
+        Vec2::from_angle(self.arm.angle + self.weight.angle).rotate(Vec2::NEG_Y * self.weight.length)
+            + self.armweight_point()
     }
 
     pub fn projectile_position (&self) -> I64Vec2 {
-        to_i64coords(self.sling_point() + vec2(0.0, self.height)) + self.position
+        to_i64coords(self.sling_point() + Vec2::Y * self.height) + self.position
     }
 
     pub fn v_projectile(&self) -> Vec2 {
-        vec2(
-            -self.arm.long_length * self.arm.angle.cos() * self.arm.velocity 
-                - self.sling.length * (self.arm.angle + self.sling.angle).cos() 
-                * (self.arm.velocity + self.sling.velocity),
-            -self.arm.long_length * self.arm.angle.sin() * self.arm.velocity 
-                - self.sling.length * (self.arm.angle + self.sling.angle).sin() 
-                * (self.arm.velocity + self.sling.velocity),
-        )
+        Vec2::from_angle(self.arm.angle + self.sling.angle).rotate(Vec2::NEG_X * self.sling.length) 
+            * (self.arm.velocity + self.sling.velocity)
+            + self.armsling_point().perp() * self.arm.velocity
     }
 
     pub fn reset(&mut self) {
@@ -207,10 +188,7 @@ impl Trebuchet {
 
         let stage: Box<dyn Fn(f32, Mat3A) -> Mat3A> = match self.state {
             TrebuchetState::Stage1 => {
-                let Mat3A{x_axis: _, y_axis: Vec3A{x: aw_prime, ..}, ..} = self.stage_1 ( 
-                    dt,
-                    mat,
-                );
+                let Mat3A{x_axis: _, y_axis: Vec3A{x: aw_prime, ..}, ..} = self.stage_1 (dt, mat);
                 if self.ground_force(aw_prime) <= 0.0 {
                     self.state = TrebuchetState::Stage2;
                 }
@@ -230,7 +208,7 @@ impl Trebuchet {
             }
         };
         
-        let rk4_results = rk4(mat, dt, stage);
+        let rk4_results = rk5(mat, dt, stage);
         Vec3A {x: self.arm.angle, y: self.weight.angle, z: self.sling.angle}         = rk4_results.x_axis;
         Vec3A {x: self.arm.velocity, y: self.weight.velocity, z:self.sling.velocity} = rk4_results.y_axis;
     }
@@ -363,10 +341,11 @@ impl Trebuchet {
     }
 }
 
-use std::ops::{Add, Mul, Div};
+use std::ops::{Add, Sub, Mul, Div};
+#[allow(dead_code)]
 fn rk4<T, U>(x: T, dt: f32, f: U) -> T
 where
-    T: Copy + Add<Output = T> + Mul<f32, Output = T> + Div<f32, Output = T>,
+    T: Copy + Add<Output = T> + Div<f32, Output = T>,
     f32: Mul<T, Output = T>,
     U: Fn(f32, T) -> T,
 {
@@ -374,7 +353,23 @@ where
     let k2 = dt * f(dt, x + 0.5 * k1);
     let k3 = dt * f(dt, x + 0.5 * k1);
     let k4 = dt * f(dt, x + k3);
-    x + (k1 + k2 * 2.0  + k3 * 2.0 + k4).div(6.0) 
+    x + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0 
+}
+
+fn rk5<T, U>(x: T, dt: f32, f: U) -> T
+where
+    T: Copy + Add<Output = T> + Sub<Output = T> + Div<f32, Output = T>,
+    f32: Mul<T, Output = T>,
+    U: Fn(f32, T) -> T,
+{
+    let k1 = dt * f(dt, x);
+    let k2 = dt * f(dt, x + (1.0 / 4.0) * k1);
+    let k3 = dt * f(dt, x + (1.0 / 8.0) * k1 + (1.0 / 8.0) * k2);
+    let k4 = dt * f(dt, x - (1.0 / 2.0) * k2 + k3);
+    let k5 = dt * f(dt, x + (3.0 / 16.0) * k1 + (9.0 / 16.0) * k4);
+    let k6 = dt * f(dt, x - (3.0 / 7.0) * k1 + (2.0 / 7.0) * k2 + (12.0 / 7.0) 
+        * k3 - (12.0/ 7.0) * k4 + (8.0 / 7.0) * k5);
+    x + (7.0 * k1 + 32.0 * k3 + 12.0 * k4 + 32.0 * k5 + 7.0 * k6) / 90.0 
 }
 
 #[cfg(test)]
