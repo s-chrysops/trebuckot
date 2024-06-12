@@ -3,25 +3,21 @@ use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets};
 
 pub async fn paused(game: &mut Game) -> Scene {
-    let button_size = vec2(200.0, 50.0);
+    let buttons_size = vec2(200.0, 60.0);
+    let buttons_pos = (get_screen() - buttons_size) / 2.0;
+
     let mut next_scene = None;
-    widgets::Popup::new(hash!(), get_screen()).ui(&mut root_ui(), |ui| {
-        if widgets::Button::new("CONTINUE")
-            .position((get_screen() - button_size) / 2.0)
-            .size(button_size)
-            .ui(ui)
-        {
-            game.state = GameState::Launched;
-            next_scene = Some(Scene::Launched);
-        }
-        if widgets::Button::new("SETTINGS")
-            .position((get_screen() - button_size) / 2.0 + vec2(0.0, button_size.y))
-            .size(button_size)
-            .ui(ui)
-        {
-            next_scene = Some(Scene::Settings(Box::new(Scene::Paused)));
-        }
-    });
+    widgets::Group::new(hash!(), vec2(200.0, 120.0))
+        .position(buttons_pos)
+        .ui(&mut root_ui(), |ui| {
+            if widgets::Button::new("Continue").size(buttons_size).ui(ui) {
+                game.state = GameState::Launched;
+                next_scene = Some(Scene::Launched);
+            }
+            if widgets::Button::new("Settings").size(buttons_size).ui(ui) {
+                next_scene = Some(Scene::Settings(Box::new(Scene::Paused)));
+            }
+        });
 
     match next_scene {
         Some(next_scene) => next_scene,

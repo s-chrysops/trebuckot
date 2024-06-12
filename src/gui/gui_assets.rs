@@ -1,18 +1,24 @@
 // use macroquad::prelude::*;
-use macroquad::{color::*, color_u8, texture::Image, ui::{root_ui, Skin}};
+use macroquad::{
+    color::*,
+    color_u8,
+    texture::Image,
+    ui::{root_ui, Skin},
+};
 
-pub struct GuiResources {
+pub struct GuiAssets {
     pub title_skin:     Skin,
+    pub paused_skin:    Skin,
     pub prelaunch_skin: Skin,
     pub landed_skin:    Skin,
     pub settings_skin:  Skin,
 }
 
-impl GuiResources {
-    pub async fn init() -> Result<GuiResources, macroquad::Error> {
+impl GuiAssets {
+    pub async fn init() -> Result<GuiAssets, macroquad::Error> {
         let black75 = Image::gen_image_color(1, 1, color_u8!(0, 0, 0, 64));
 
-        let main_menu_skin = {
+        let title_skin = {
             let button_style = root_ui()
                 .style_builder()
                 .font(include_bytes!("../../assets/VT323.ttf"))?
@@ -40,11 +46,33 @@ impl GuiResources {
             }
         };
 
+        let paused_skin = {
+            let button_style = root_ui()
+                .style_builder()
+                .font(include_bytes!("../../assets/VT323.ttf"))?
+                .font_size(36)
+                .text_color(WHITE)
+                .background(Image::empty())
+                .build();
+            let window_style = root_ui().style_builder().background(Image::empty()).build();
+            let group_style = root_ui()
+                .style_builder()
+                .color(color_u8!(0, 0, 0, 0))
+                .build();
+            Skin {
+                button_style,
+                window_style,
+                group_style,
+                margin: 0.0,
+                ..root_ui().default_skin()
+            }
+        };
+
         let prelaunch_skin = {
             let button_style = root_ui()
                 .style_builder()
                 .font(include_bytes!("../../assets/VT323.ttf"))?
-                .font_size(72)
+                .font_size(144)
                 .text_color(WHITE)
                 .background(Image::empty())
                 .build();
@@ -99,8 +127,9 @@ impl GuiResources {
             }
         };
 
-        Ok(GuiResources {
-            title_skin: main_menu_skin,
+        Ok(GuiAssets {
+            title_skin,
+            paused_skin,
             prelaunch_skin,
             landed_skin,
             settings_skin,

@@ -25,14 +25,14 @@ impl RenderSpace {
         to_meters(point - self.position) + get_screen() / 2.0
     }
 
-    pub fn draw(&self) {
-        draw_circle_lines(
-            screen_width() / 2.0,
-            screen_height() / 2.0,
-            self.radius / 256.0,
-            50.0,
-            RED,
-        );
-    }
+    // pub fn draw(&self) {
+    //     draw_circle_lines(
+    //         screen_width() / 2.0,
+    //         screen_height() / 2.0,
+    //         self.radius / 256.0,
+    //         50.0,
+    //         RED,
+    //     );
+    // }
 }
 

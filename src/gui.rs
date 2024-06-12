@@ -1,14 +1,14 @@
 use crate::{Game, GameState};
 use macroquad::ui::root_ui;
 
-use gui_resources::GuiResources;
+use gui_assets::GuiAssets;
 use landed::landed;
 use paused::paused;
 use prelaunch::prelaunch;
 use settings::settings;
 use title::title;
 
-mod gui_resources;
+mod gui_assets;
 mod landed;
 mod paused;
 mod prelaunch;
@@ -28,30 +28,33 @@ pub enum Scene {
 }
 
 pub struct Gui {
-    scene:     Scene,
-    resources: GuiResources,
+    scene:  Scene,
+    assets: GuiAssets,
 }
 
 impl Gui {
     pub async fn init() -> Result<Gui, macroquad::Error> {
-        let gui_resources = GuiResources::init().await?;
+        let assets = GuiAssets::init().await?;
         Ok(Gui {
-            scene:     Scene::MainMenu,
-            resources: gui_resources,
+            scene: Scene::MainMenu,
+            assets,
         })
     }
 
     pub async fn update(&mut self, game: &mut Game) {
         self.scene = match &self.scene {
             Scene::MainMenu => {
-                root_ui().push_skin(&self.resources.title_skin);
+                root_ui().push_skin(&self.assets.title_skin);
                 title(game).await
             }
             Scene::Data => todo!(),
             Scene::Credits => todo!(),
-            Scene::Paused => paused(game).await,
+            Scene::Paused => {
+                root_ui().push_skin(&self.assets.paused_skin);
+                paused(game).await
+            }
             Scene::PreLaunch => {
-                root_ui().push_skin(&self.resources.prelaunch_skin);
+                root_ui().push_skin(&self.assets.prelaunch_skin);
                 prelaunch(game).await
             }
             Scene::Launched => match game.state {
@@ -60,11 +63,11 @@ impl Gui {
                 _ => Scene::Launched,
             },
             Scene::Landed => {
-                root_ui().push_skin(&self.resources.landed_skin);
+                root_ui().push_skin(&self.assets.landed_skin);
                 landed(game).await
             }
             Scene::Settings(last_scene) => {
-                root_ui().push_skin(&self.resources.settings_skin);
+                root_ui().push_skin(&self.assets.settings_skin);
                 settings(last_scene.clone()).await
             }
         };

@@ -11,8 +11,8 @@ mod player;
 mod resources;
 mod stats;
 pub mod trebuchet;
-pub mod world;
 mod upgrades;
+pub mod world;
 
 const START_POINT: I64Vec2 = i64vec2(0, 1_631_092_932);
 
