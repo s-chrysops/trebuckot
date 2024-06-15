@@ -1,4 +1,4 @@
-use crate::{Game, GameState};
+use crate::{Game, GameError, GameState};
 use macroquad::ui::root_ui;
 
 use gui_assets::GuiAssets;
@@ -36,7 +36,7 @@ pub struct Gui {
 }
 
 impl Gui {
-    pub async fn init() -> Result<Gui, macroquad::Error> {
+    pub async fn init() -> Result<Gui, GameError> {
         let assets = GuiAssets::init().await?;
         Ok(Gui {
             scene: Scene::MainMenu,

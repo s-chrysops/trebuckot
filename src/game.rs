@@ -6,6 +6,8 @@ use stats::*;
 use tech::*;
 use trebuchet::*;
 use world::*;
+
+use crate::GameError;
 // use upgrades::*;
 
 mod player;
@@ -48,7 +50,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub async fn init() -> Result<Game, macroquad::Error> {
+    pub async fn init() -> Result<Game, GameError> {
         use terrain::TerrainClass as TC;
         // BEarth
         let terra = [

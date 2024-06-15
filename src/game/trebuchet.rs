@@ -179,7 +179,7 @@ impl Trebuchet {
         self.m_proj          = 0.3;
     }
 
-    pub fn run(&mut self, dt: f32) {
+    pub fn run(&mut self, dt: f32) -> bool {
         let mat = mat3a(
             vec3a(self.arm.angle, self.weight.angle, self.sling.angle),
             vec3a(self.arm.velocity, self.weight.velocity, self.sling.velocity),
@@ -211,6 +211,8 @@ impl Trebuchet {
         let rk4_results = rk5(mat, dt, stage);
         Vec3A {x: self.arm.angle, y: self.weight.angle, z: self.sling.angle}         = rk4_results.x_axis;
         Vec3A {x: self.arm.velocity, y: self.weight.velocity, z:self.sling.velocity} = rk4_results.y_axis;
+
+        self.state == TrebuchetState::Stage3
     }
 
     fn ground_force(&self, aw_prime: f32) -> f32 {

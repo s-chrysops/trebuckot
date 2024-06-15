@@ -5,7 +5,7 @@ pub fn draw_hud(game: &Game, font: &Font) {
     match game.state {
         GameState::PreLaunch => {
             // let margin_x = screen_width() / 16.0;
-            let margin_y = screen_height() / 16.0;
+            let margin_y = 48.0;
             let spacing = screen_width() / 6.0;
 
             let params = TextParams {

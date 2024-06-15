@@ -1,4 +1,4 @@
-use crate::{trebuchet, utils::*, Game, GameState};
+use crate::{utils::*, Game, GameState};
 use macroquad::prelude::*;
 
 const PHYSICS_TICK: f32 = 0.001;
@@ -38,8 +38,7 @@ impl Physics {
                 game.player.acceleration.x += game.player.move_speed;
             }
 
-            game.trebuchet.run(PHYSICS_TICK);
-            if game.trebuchet.state != trebuchet::TrebuchetState::Stage3 {
+            if !game.trebuchet.run(PHYSICS_TICK) {
                 game.player.position = game.trebuchet.projectile_position();
                 game.player.velocity = game.trebuchet.v_projectile();
                 continue;

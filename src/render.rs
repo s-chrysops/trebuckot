@@ -1,12 +1,12 @@
-use crate::{game::*, utils::*};
+use crate::{game::*, utils::*, GameError};
+use hud::draw_hud;
 use macroquad::prelude::*;
 use render_space::RenderSpace;
-use hud::draw_hud;
 use trebuchet::draw_trebuchet;
 use world::draw_world;
 
-pub mod icon;
 mod hud;
+pub mod icon;
 mod render_space;
 mod trebuchet;
 mod world;
@@ -28,7 +28,7 @@ pub struct Render {
 }
 
 impl Render {
-    pub async fn init() -> Result<Render, macroquad::Error> {
+    pub async fn init() -> Result<Render, GameError> {
         let render_target = render_target(screen_width() as u32, screen_height() as u32);
         render_target.texture.set_filter(FilterMode::Linear);
 
@@ -69,13 +69,13 @@ impl Render {
                         (screen_width() / 20000.0).recip(),
                         -(screen_height() * 50.0).recip(),
                     ),
-                )
+                );
             }
             _ => (),
         }
         if is_key_pressed(KeyCode::Tab) {
             self.freecam_on ^= true;
-        }
+        };
         let freecam_speed = match is_key_down(KeyCode::LeftShift) {
             true => 256,
             false => 25600,
@@ -101,7 +101,7 @@ impl Render {
             }
         } else {
             self.render_space.position = game.player.position;
-        }
+        };
 
         if self.prev_screen != get_screen() {
             self.prev_screen = get_screen();
@@ -114,7 +114,7 @@ impl Render {
             self.camera.render_target = Some(self.render_target.clone());
             self.camera.zoom *= 100.0;
             self.smooth_zoom = self.camera.zoom;
-        }
+        };
     }
 
     pub fn draw(&self, game: &Game) {
