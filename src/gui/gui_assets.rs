@@ -6,6 +6,8 @@ use macroquad::{
     ui::{root_ui, Skin},
 };
 
+use crate::GameError;
+
 pub struct GuiAssets {
     pub title_skin:     Skin,
     pub paused_skin:    Skin,
@@ -16,9 +18,7 @@ pub struct GuiAssets {
 }
 
 impl GuiAssets {
-    pub async fn init() -> Result<GuiAssets, macroquad::Error> {
-        let black75 = Image::gen_image_color(1, 1, color_u8!(0, 0, 0, 64));
-
+    pub async fn init() -> Result<GuiAssets, GameError> {
         let title_skin = {
             let button_style = root_ui()
                 .style_builder()
@@ -55,7 +55,10 @@ impl GuiAssets {
                 .text_color(WHITE)
                 .background(Image::empty())
                 .build();
-            let window_style = root_ui().style_builder().background(Image::empty()).build();
+            let window_style = root_ui()
+                .style_builder()
+                .color(color_u8!(0, 0, 0, 0))
+                .build();
             let group_style = root_ui()
                 .style_builder()
                 .color(color_u8!(0, 0, 0, 0))
@@ -84,6 +87,13 @@ impl GuiAssets {
         };
 
         let upgrades_skin = {
+            let label_style = root_ui()
+                .style_builder()
+                .font(include_bytes!("../../assets/Silkscreen.ttf"))?
+                .font_size(24)
+                .text_color(WHITE)
+                // .margin(RectOffset::new(0.0, 0.0, 10.0, 10.0))
+                .build();
             let button_style = root_ui()
                 .style_builder()
                 .font(include_bytes!("../../assets/VT323.ttf"))?
@@ -93,11 +103,18 @@ impl GuiAssets {
                 .build();
             let window_style = root_ui()
                 .style_builder()
-                .background(black75.clone())
+                .color(color_u8!(0, 0, 0, 64))
+                .build();
+            let group_style = root_ui()
+                .style_builder()
+                .color(color_u8!(0, 0, 0, 64))
                 .build();
             Skin {
+                label_style,
                 button_style,
                 window_style,
+                group_style,
+                margin: 0.0,
                 ..root_ui().default_skin()
             }
         };
@@ -117,7 +134,10 @@ impl GuiAssets {
             //     .text_color(WHITE)
             //     .margin(RectOffset::new(60.0, 60.0, 40.0, 0.0))
             //     .build();
-            let window_style = root_ui().style_builder().background(Image::empty()).build();
+            let window_style = root_ui()
+                .style_builder()
+                .color(color_u8!(0, 0, 0, 0))
+                .build();
             Skin {
                 // label_style,
                 button_style,
@@ -136,7 +156,7 @@ impl GuiAssets {
                 .build();
             let window_style = root_ui()
                 .style_builder()
-                .background(black75.clone())
+                .color(color_u8!(0, 0, 0, 64))
                 .build();
             Skin {
                 button_style,
