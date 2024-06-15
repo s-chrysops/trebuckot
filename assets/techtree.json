@@ -1,0 +1,6 @@
+[
+    {"name": "test0", "spot": [0, 0], "info": {"description": "blubblubblub", "cost": 100}},
+    {"name": "test1", "spot": [1, 0], "info": {"description": "blubblubblub", "cost": 100}},
+    {"name": "test2", "spot": [0, 1], "info": {"description": "blabblabblab", "cost": 100, "parent": "test0"}},
+    {"name": "test3", "spot": [1, 1], "info": {"description": "blabblabblab", "cost": 100, "parent": "test1"}}
+]

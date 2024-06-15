@@ -10,6 +10,7 @@ pub struct GuiAssets {
     pub title_skin:     Skin,
     pub paused_skin:    Skin,
     pub prelaunch_skin: Skin,
+    pub upgrades_skin:  Skin,
     pub landed_skin:    Skin,
     pub settings_skin:  Skin,
 }
@@ -76,7 +77,24 @@ impl GuiAssets {
                 .text_color(WHITE)
                 .background(Image::empty())
                 .build();
-            let window_style = root_ui().style_builder().background(Image::empty()).build();
+            Skin {
+                button_style,
+                ..root_ui().default_skin()
+            }
+        };
+
+        let upgrades_skin = {
+            let button_style = root_ui()
+                .style_builder()
+                .font(include_bytes!("../../assets/VT323.ttf"))?
+                .font_size(36)
+                .text_color(WHITE)
+                .background(Image::empty())
+                .build();
+            let window_style = root_ui()
+                .style_builder()
+                .background(black75.clone())
+                .build();
             Skin {
                 button_style,
                 window_style,
@@ -131,6 +149,7 @@ impl GuiAssets {
             title_skin,
             paused_skin,
             prelaunch_skin,
+            upgrades_skin,
             landed_skin,
             settings_skin,
         })

@@ -34,7 +34,7 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() -> Result<(), macroquad::Error> {
     set_pc_assets_folder("assets");
-    let mut game = Game::init().await;
+    let mut game = Game::init().await?;
     let mut gui = Gui::init().await?;
     let mut physics = Physics::init().await;
     let mut render = Render::init().await?;

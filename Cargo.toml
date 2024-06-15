@@ -6,4 +6,5 @@ authors = ["Scup st.chrysops@gmail.com"]
 
 [dependencies]
 macroquad = "0.4.8"
+nanoserde = "0.1.37"
 quad-storage = "0.1.3"

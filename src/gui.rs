@@ -7,6 +7,7 @@ use paused::paused;
 use prelaunch::prelaunch;
 use settings::settings;
 use title::title;
+use upgrades::upgrades;
 
 mod gui_assets;
 mod landed;
@@ -14,6 +15,7 @@ mod paused;
 mod prelaunch;
 mod settings;
 mod title;
+mod upgrades;
 
 #[derive(Debug, Clone)]
 pub enum Scene {
@@ -22,6 +24,7 @@ pub enum Scene {
     Credits,
     Paused,
     PreLaunch,
+    Upgrades(u32, Option<usize>),
     Launched,
     Landed,
     Settings(Box<Scene>),
@@ -56,6 +59,10 @@ impl Gui {
             Scene::PreLaunch => {
                 root_ui().push_skin(&self.assets.prelaunch_skin);
                 prelaunch(game).await
+            }
+            Scene::Upgrades(tab, tech) => {
+                root_ui().push_skin(&self.assets.upgrades_skin);
+                upgrades(*tab, *tech, game).await
             }
             Scene::Launched => match game.state {
                 GameState::Paused => Scene::Paused,

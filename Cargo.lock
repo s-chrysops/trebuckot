@@ -332,6 +332,7 @@ name = "trebuckot"
 version = "0.2.3"
 dependencies = [
  "macroquad",
+ "nanoserde",
  "quad-storage",
 ]
 

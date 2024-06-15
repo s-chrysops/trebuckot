@@ -3,6 +3,7 @@ use macroquad::prelude::*;
 use player::*;
 use resources::*;
 use stats::*;
+use tech::*;
 use trebuchet::*;
 use world::*;
 // use upgrades::*;
@@ -10,6 +11,7 @@ use world::*;
 mod player;
 mod resources;
 mod stats;
+mod tech;
 pub mod trebuchet;
 mod upgrades;
 pub mod world;
@@ -42,10 +44,11 @@ pub struct Game {
     pub trebuchet: Trebuchet,
     pub player:    Player,
     pub resources: Resources,
+    pub tech_tree: TechTree,
 }
 
 impl Game {
-    pub async fn init() -> Game {
+    pub async fn init() -> Result<Game, macroquad::Error> {
         use terrain::TerrainClass as TC;
         // BEarth
         let terra = [
@@ -73,8 +76,9 @@ impl Game {
         trebuchet.reset();
         let player = Player::new(trebuchet.projectile_position());
         let resources = Resources::default();
+        let tech_tree = TechTree::init().await?;
 
-        Game {
+        Ok(Game {
             state: GameState::Paused,
 
             day: 0,
@@ -84,7 +88,8 @@ impl Game {
             trebuchet,
             player,
             resources,
-        }
+            tech_tree,
+        })
     }
 
     pub fn next_day(&mut self) {
