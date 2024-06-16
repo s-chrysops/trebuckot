@@ -1,0 +1,28 @@
+[
+    {
+        "name": "Bucko Lab I", 
+        "cost": 1, 
+        "spot": [0, 0], 
+        "desc": "Enable buckos to further research Trebuchet technologies"
+    },
+    {
+        "name": "Rocks", 
+        "cost": 1, 
+        "spot": [6, 0], 
+        "desc": "Add rock. Weight heavy. Plushie go far! UGGA!!"
+    },
+    {
+        "name": "test2", 
+        "cost": 100, 
+        "spot": [0, 1], 
+        "desc": "blabblabblab",
+        "parents": ["Bucko Lab I"]
+    },
+    {
+        "name": "test3", 
+        "cost": 100, 
+        "spot": [6, 1], 
+        "desc": "blabblabblab",
+        "parents": ["Rocks"]
+    }
+]
