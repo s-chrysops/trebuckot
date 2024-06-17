@@ -23,6 +23,7 @@ pub struct Render {
     freecam_on:       bool,
     prev_screen:      Vec2,
     smooth_zoom:      Vec2,
+    smooth_offset:    Vec2,
 
     font: Font,
 }
@@ -40,19 +41,17 @@ impl Render {
         let smooth_zoom = camera.zoom;
         set_camera(&camera);
 
-        let render_space = RenderSpace::init();
-        let font = load_ttf_font("VT323.ttf").await?;
-
         Ok(Render {
             camera,
             render_target,
 
-            render_space,
+            render_space: RenderSpace::init(),
             freecam_on: false,
             prev_screen: get_screen(),
             smooth_zoom,
+            smooth_offset: Vec2::ZERO,
 
-            font,
+            font: load_ttf_font("VT323.ttf").await?,
         })
     }
 
@@ -73,18 +72,30 @@ impl Render {
             }
             _ => (),
         }
+
         if is_key_pressed(KeyCode::Tab) {
             self.freecam_on ^= true;
         };
-        let freecam_speed = match is_key_down(KeyCode::LeftShift) {
-            true => 256,
-            false => 25600,
+
+        let freecam_speed = 256
+            * if is_key_down(KeyCode::LeftShift) {
+                1
+            } else {
+                100
+            };
+
+        self.smooth_offset = match game.state {
+            GameState::Paused => self.camera.offset,
+            GameState::PreLaunch => vec2(0.0, 0.5),
+            GameState::Launched => game.player.velocity.normalize() * vec2(-0.5, 0.5),
+            GameState::Landed => vec2(0.0, 0.5),
         };
 
-        self.camera.zoom += (self.smooth_zoom - self.camera.zoom) * 0.1;
+        self.camera.zoom += (self.smooth_zoom - self.camera.zoom) / 8.0;
+        self.camera.offset += (self.smooth_offset - self.camera.offset) / 128.0;
 
         let rel_pos = self.render_space.position - game.world.position;
-        self.camera.rotation = 90.0 - to_angle(to_meters(rel_pos)).to_degrees();
+        self.camera.rotation = 90.0 - to_meters(rel_pos).to_angle().to_degrees();
 
         if self.freecam_on {
             if is_key_down(KeyCode::W) {
@@ -102,6 +113,19 @@ impl Render {
         } else {
             self.render_space.position = game.player.position;
         };
+
+        // if is_key_down(KeyCode::Up) {
+        //     self.camera.offset += Vec2::ZERO.with_y(0.01);
+        // }
+        // if is_key_down(KeyCode::Down) {
+        //     self.camera.offset -= Vec2::ZERO.with_y(0.01);
+        // }
+        // if is_key_down(KeyCode::Left) {
+        //     self.camera.offset += Vec2::ZERO.with_x(0.01);
+        // }
+        // if is_key_down(KeyCode::Right) {
+        //     self.camera.offset -= Vec2::ZERO.with_x(0.01);
+        // }
 
         if self.prev_screen != get_screen() {
             self.prev_screen = get_screen();
@@ -132,7 +156,6 @@ impl Render {
 
         // self.render_space.draw();
 
-        // Draw render target to screen
         set_default_camera();
         clear_background(BLACK);
         draw_texture_ex(
