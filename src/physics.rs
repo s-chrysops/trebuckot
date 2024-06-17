@@ -51,8 +51,8 @@ impl Physics {
 
 fn do_physics(game: &mut Game, tick: f32) {
     let terrain_idx = game.world.get_terrain_idx_beneath(game.player.position);
-    let terrain_a = game.world.terrain.surface[terrain_idx];
-    let terrain_b = game.world.terrain.surface[(terrain_idx + 1) % game.world.terrain.circ];
+    let terrain_a = game.world.get_terrain_at(terrain_idx);
+    let terrain_b = game.world.get_terrain_at((terrain_idx + 1) % game.world.terrain.circ);
 
     // Apply gravity if player above terrain
     if orientation(terrain_a, terrain_b, game.player.position) == 1 {

@@ -1,85 +1,62 @@
-use macroquad::prelude::*;
-use crate::{world::World, utils::*};
 use super::render_space::RenderSpace;
+use crate::world::World;
+use macroquad::prelude::*;
 
 const TERRAIN_DEPTH: f32 = 100_000.0;
 
 pub fn draw_world(render_space: &RenderSpace, world: &World) {
-    let surface = &world.terrain.surface;
     let circ = world.terrain.circ;
-    let radius_bot = world.radius - TERRAIN_DEPTH;
     let terrain_idx = world.get_terrain_idx_beneath(render_space.position);
 
-    let l_scan = surface
-        .iter()
-        .cycle()
-        .skip(terrain_idx)
-        .position(|p| !render_space.within(*p))
-        .unwrap();
-    let r_scan = surface
-        .iter()
-        .rev()
-        .cycle()
-        .skip(circ - terrain_idx)
-        .position(|p| !render_space.within(*p))
-        .unwrap();
-    let l_bound = (l_scan + terrain_idx) % circ;
-    let r_bound = (circ + terrain_idx - r_scan) % circ;
+    let range = ((render_space.radius.powi(2) - world.get_altitude(render_space.position).powi(2))
+        .sqrt()
+        / 1000.0) as usize;
 
-    let active: Vec<usize> = if r_bound > l_bound {
+    let l_bound = (range + terrain_idx) % circ;
+    let r_bound = (circ + terrain_idx - range) % circ;
+
+    let active_indicies: Vec<usize> = if r_bound > l_bound {
         (r_bound..circ).chain(0..l_bound).collect()
     } else {
         (r_bound..l_bound).collect()
     };
 
-    active.into_iter().for_each(|current_idx| {
-        let next_idx = (current_idx + 1) % circ;
-        let u1 = world.terrain.surface[current_idx];
-        let u2 = world.terrain.surface[next_idx];
+    active_indicies.into_iter().for_each(|index| {
+        let next_index = (index + 1) % circ;
 
-        let l1 = to_i64coords(polar_to_cartesian(
-            radius_bot,
-            current_idx as f32 * 1000.0 / world.radius,
-        )) + world.position;
-        let l2 = to_i64coords(polar_to_cartesian(
-            radius_bot,
-            next_idx as f32 * 1000.0 / world.radius,
-        )) + world.position;
+        let surface_a = world.get_terrain_at(index);
+        let surface_b = world.get_terrain_at(next_index);
 
-        let s1 = to_i64coords(polar_to_cartesian(
-            world.radius,
-            current_idx as f32 * 1000.0 / world.radius,
-        )) + world.position;
-        let s2 = to_i64coords(polar_to_cartesian(
-            world.radius,
-            next_idx as f32 * 1000.0 / world.radius,
-        )) + world.position;
+        let bottom_a = world.get_sealevel_at(index, Some(TERRAIN_DEPTH));
+        let bottom_b = world.get_sealevel_at(next_index, Some(TERRAIN_DEPTH));
+
+        let sealevel_a = world.get_sealevel_at(index, None);
+        let sealevel_b = world.get_sealevel_at(next_index, None);
 
         // Draw water
         draw_triangle(
-            render_space.to_screen(s1),
-            render_space.to_screen(s2),
-            render_space.to_screen(l1),
+            render_space.to_screen(sealevel_a),
+            render_space.to_screen(sealevel_b),
+            render_space.to_screen(bottom_a),
             BLUE,
         );
         draw_triangle(
-            render_space.to_screen(l1),
-            render_space.to_screen(l2),
-            render_space.to_screen(s2),
+            render_space.to_screen(bottom_a),
+            render_space.to_screen(bottom_b),
+            render_space.to_screen(sealevel_b),
             DARKBLUE,
         );
 
-        // Draw terrain
         draw_triangle(
-            render_space.to_screen(u1),
-            render_space.to_screen(u2),
-            render_space.to_screen(l1),
+            render_space.to_screen(surface_a),
+            render_space.to_screen(surface_b),
+            render_space.to_screen(bottom_a),
             GREEN,
         );
         draw_triangle(
-            render_space.to_screen(l1),
-            render_space.to_screen(l2),
-            render_space.to_screen(u2),
+            render_space.to_screen(bottom_a),
+            render_space.to_screen(bottom_b),
+            render_space.to_screen(surface_b),
             DARKGREEN,
         );
     });

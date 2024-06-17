@@ -1,4 +1,3 @@
-use crate::utils::*;
 use macroquad::math::*;
 use std::f32::consts;
 
@@ -22,15 +21,14 @@ pub enum TerrainClass {
     Ocean(usize),
 }
 
-// Contains all the points of a World in i64 space
 pub struct Terrain {
-    pub circ:    usize,
-    pub surface: Vec<I64Vec2>,
+    pub circ:       usize, // Kilometers
+    pub height_map: Vec<f32>,
+    // pub has_water:  Vec<bool>,
 }
 
 impl Terrain {
     pub fn new(
-        position: I64Vec2,
         radius: f32,
         class: WorldClass,
         preset: Option<&[TerrainClass]>,
@@ -42,18 +40,13 @@ impl Terrain {
             None => vec![0.0; circ], // TODO replace with terrain section generator
         };
 
-        let surface: Vec<I64Vec2> = height_map
-            .iter()
-            .enumerate()
-            .map(|(i, height)| {
-                to_i64coords(polar_to_cartesian(
-                    radius + height,
-                    i as f32 * 1000.0 / radius,
-                )) + position
-            })
-            .collect();
+        // let has_water = vec![false; circ];
 
-        Self { circ, surface }
+        Self {
+            circ,
+            height_map,
+            // has_water,
+        }
     }
 }
 
