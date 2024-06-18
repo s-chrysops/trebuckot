@@ -1,12 +1,14 @@
 use crate::{game::*, utils::*, GameError};
 use hud::draw_hud;
 use macroquad::prelude::*;
+use render_assets::RenderAssets;
 use render_space::RenderSpace;
 use trebuchet::draw_trebuchet;
 use world::draw_world;
 
 mod hud;
 pub mod icon;
+mod render_assets;
 mod render_space;
 mod trebuchet;
 mod world;
@@ -25,7 +27,7 @@ pub struct Render {
     smooth_zoom:      Vec2,
     smooth_offset:    Vec2,
 
-    font: Font,
+    assets: RenderAssets,
 }
 
 impl Render {
@@ -51,7 +53,7 @@ impl Render {
             smooth_zoom,
             smooth_offset: Vec2::ZERO,
 
-            font: load_ttf_font("VT323.ttf").await?,
+            assets: RenderAssets::init().await?,
         })
     }
 
@@ -147,7 +149,11 @@ impl Render {
         //Draw & Clear Background
         clear_background(SKYBLUE);
 
-        draw_world(&self.render_space, &game.world);
+        draw_world(
+            &self.render_space,
+            &game.world,
+            &self.assets.terrain_material,
+        );
         draw_trebuchet(&self.render_space, &game.trebuchet);
 
         // Placeholder player
@@ -170,6 +176,6 @@ impl Render {
             },
         );
 
-        draw_hud(game, &self.font);
+        draw_hud(game, &self.assets);
     }
 }

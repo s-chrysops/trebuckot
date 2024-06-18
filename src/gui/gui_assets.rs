@@ -92,7 +92,7 @@ impl GuiAssets {
                 .font(include_bytes!("../../assets/Silkscreen.ttf"))?
                 .font_size(24)
                 .text_color(WHITE)
-                // .margin(RectOffset::new(0.0, 0.0, 10.0, 10.0))
+                // .margin(macroquad::math::RectOffset::new(10.0, 10.0, 0.0, 0.0))
                 .build();
             let button_style = root_ui()
                 .style_builder()
@@ -103,6 +103,7 @@ impl GuiAssets {
                 .build();
             let window_style = root_ui()
                 .style_builder()
+                // .margin(macroquad::math::RectOffset::new(10.0, 10.0, 10.0, 10.0))
                 .color(color_u8!(0, 0, 0, 64))
                 .build();
             let group_style = root_ui()

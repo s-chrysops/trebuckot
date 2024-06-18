@@ -2,15 +2,16 @@ use super::render_space::RenderSpace;
 use crate::world::World;
 use macroquad::prelude::*;
 
-const TERRAIN_DEPTH: f32 = 100_000.0;
+const TERRAIN_DEPTH: f32 = 50_000.0;
 
-pub fn draw_world(render_space: &RenderSpace, world: &World) {
+pub fn draw_world(render_space: &RenderSpace, world: &World, material: &Material) {
     let circ = world.terrain.circ;
     let terrain_idx = world.get_terrain_idx_beneath(render_space.position);
 
     let range = ((render_space.radius.powi(2) - world.get_altitude(render_space.position).powi(2))
         .sqrt()
-        / 1000.0) as usize;
+        / 1000.0) as usize
+        + 24;
 
     let l_bound = (range + terrain_idx) % circ;
     let r_bound = (circ + terrain_idx - range) % circ;
@@ -30,34 +31,47 @@ pub fn draw_world(render_space: &RenderSpace, world: &World) {
         let bottom_a = world.get_sealevel_at(index, Some(TERRAIN_DEPTH));
         let bottom_b = world.get_sealevel_at(next_index, Some(TERRAIN_DEPTH));
 
-        let sealevel_a = world.get_sealevel_at(index, None);
-        let sealevel_b = world.get_sealevel_at(next_index, None);
+        {
+            let sealevel_a = world.get_sealevel_at(index, None);
+            let sealevel_b = world.get_sealevel_at(next_index, None);
 
-        // Draw water
-        draw_triangle(
-            render_space.to_screen(sealevel_a),
-            render_space.to_screen(sealevel_b),
-            render_space.to_screen(bottom_a),
-            BLUE,
-        );
-        draw_triangle(
+            // Draw water
+            draw_quadrilateral(
+                render_space.to_screen(sealevel_b),
+                render_space.to_screen(sealevel_a),
+                render_space.to_screen(bottom_a),
+                render_space.to_screen(bottom_b),
+                BLUE,
+            );
+        }
+
+        gl_use_material(material);
+        material.set_uniform("EdgeColor", vec4(0.253, 0.924, 0.039, 1.0));
+        material.set_uniform("InnerColor", vec4(0.273, 0.168, 0.148, 1.0));
+        draw_quadrilateral(
+            render_space.to_screen(surface_b),
+            render_space.to_screen(surface_a),
             render_space.to_screen(bottom_a),
             render_space.to_screen(bottom_b),
-            render_space.to_screen(sealevel_b),
-            DARKBLUE,
-        );
-
-        draw_triangle(
-            render_space.to_screen(surface_a),
-            render_space.to_screen(surface_b),
-            render_space.to_screen(bottom_a),
             GREEN,
         );
-        draw_triangle(
-            render_space.to_screen(bottom_a),
-            render_space.to_screen(bottom_b),
-            render_space.to_screen(surface_b),
-            DARKGREEN,
-        );
+        gl_use_default_material();
     });
+}
+
+// Draw quadrilateral from four points starting at the top-left corner proceeding clockwise
+fn draw_quadrilateral(a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: Color) {
+    let context = unsafe { get_internal_gl() };
+
+    let vertices = [
+        Vertex::new(a.x, a.y, 0., 0.0, 0.0, color),
+        Vertex::new(b.x, b.y, 0., 1.0, 0.0, color),
+        Vertex::new(c.x, c.y, 0., 1.0, 1.0, color),
+        Vertex::new(d.x, d.y, 0., 0.0, 1.0, color),
+    ];
+    let indices: [u16; 6] = [0, 1, 2, 0, 2, 3];
+
+    context.quad_gl.texture(None);
+    context.quad_gl.draw_mode(DrawMode::Triangles);
+    context.quad_gl.geometry(&vertices, &indices);
 }

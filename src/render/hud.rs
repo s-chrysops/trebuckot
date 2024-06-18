@@ -1,17 +1,23 @@
+use super::render_assets::RenderAssets;
 use crate::{Game, GameState};
 use macroquad::prelude::*;
 
-pub fn draw_hud(game: &Game, font: &Font) {
+pub fn draw_hud(game: &Game, assets: &RenderAssets) {
     match game.state {
         GameState::PreLaunch => {
             // let margin_x = screen_width() / 16.0;
-            let margin_y = 48.0;
+            let margin_y = screen_height() / 20.0;
             let spacing = screen_width() / 6.0;
 
-            let params = TextParams {
-                font: Some(font),
+            let text_params = TextParams {
+                font: Some(&assets.font),
                 font_size: 48,
                 color: WHITE,
+                ..Default::default()
+            };
+
+            let texture_params = DrawTextureParams {
+                dest_size: Some(vec2(spacing, spacing / 4.0)),
                 ..Default::default()
             };
 
@@ -20,12 +26,19 @@ pub fn draw_hud(game: &Game, font: &Font) {
                     continue;
                 }
                 let fmt = resource.to_string();
-                let fmt_width = measure_text(&fmt, Some(font), 48, 1.0).width;
+                let fmt_width = measure_text(&fmt, Some(&assets.font), 48, 1.0).width;
+                draw_texture_ex(
+                    assets.get("resources_cardboard"),
+                    spacing * i as f32,
+                    0.0,
+                    WHITE,
+                    texture_params.clone(),
+                );
                 draw_text_ex(
                     &fmt,
-                    (spacing * (i + 1) as f32) - fmt_width,
+                    (spacing * (i + 1) as f32) - fmt_width - screen_width() / 64.0,
                     margin_y,
-                    params.clone(),
+                    text_params.clone(),
                 )
             }
         }
@@ -35,14 +48,14 @@ pub fn draw_hud(game: &Game, font: &Font) {
             let margin_y = screen_height() / 32.0;
 
             let speed_params = TextParams {
-                font: Some(font),
+                font: Some(&assets.font),
                 font_size: 48,
                 color: WHITE,
                 ..Default::default()
             };
 
             let altitude_params = TextParams {
-                font: Some(font),
+                font: Some(&assets.font),
                 font_size: 24,
                 color: WHITE,
                 ..Default::default()
@@ -67,7 +80,7 @@ pub fn draw_hud(game: &Game, font: &Font) {
             let margin_y = screen_height() / 4.0;
             let spacing = 60.0;
             let params = TextParams {
-                font: Some(font),
+                font: Some(&assets.font),
                 font_size: 48,
                 color: WHITE,
                 ..Default::default()
@@ -75,7 +88,7 @@ pub fn draw_hud(game: &Game, font: &Font) {
 
             for (i, stat) in game.stats.as_vec().iter().enumerate() {
                 let stat_fmt = format!("{:.2}{}", stat.value, stat.unit);
-                let stat_width = measure_text(&stat_fmt, Some(font), 48, 1.0).width;
+                let stat_width = measure_text(&stat_fmt, Some(&assets.font), 48, 1.0).width;
                 draw_text_ex(
                     &stat.field,
                     margin_x,
@@ -92,8 +105,8 @@ pub fn draw_hud(game: &Game, font: &Font) {
 
             let re = "Research Earned";
             let points = game.stats.crunch().to_string();
-            let re_width = measure_text(re, Some(font), 48, 1.0).width;
-            let points_width = measure_text(&points, Some(font), 48, 1.0).width;
+            let re_width = measure_text(re, Some(&assets.font), 48, 1.0).width;
+            let points_width = measure_text(&points, Some(&assets.font), 48, 1.0).width;
             draw_text_ex(
                 re,
                 (screen_width() - re_width) / 2.0,
