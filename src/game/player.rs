@@ -1,10 +1,11 @@
-use macroquad::math::{I64Vec2, Vec2};
 use super::upgrades::*;
+use macroquad::math::{I64Vec2, Vec2};
 
-//#[derive(Default)]
+#[derive(Default)]
 pub struct Player {
-    pub position: I64Vec2,
-    pub rotation: f32,
+    pub position:     I64Vec2,
+    pub rotation:     f32,
+    pub ang_velocity: f32,
 
     pub mass:         f32,
     pub velocity:     Vec2,
@@ -26,20 +27,8 @@ impl Player {
         Self {
             position,
             mass: 0.3,
-
-            rotation: 0.0,
-            velocity: Vec2::default(),
-            acceleration: Vec2::default(),
-
-            gun: None,
-            melee: None,
-
-            coating: None,
-            brakes: None,
-            thrusters: None,
-            stablizer: None,
-
             move_speed: 1000.0,
+            ..Default::default()
         }
     }
 }

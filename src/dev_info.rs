@@ -1,4 +1,4 @@
-use crate::{game::Game, get_screen, render::Render};
+use crate::{game::Game, render::Render};
 use macroquad::prelude::*;
 
 pub struct DevInfo {
@@ -36,9 +36,9 @@ impl DevInfo {
         }
 
         // Get world position from mouse
-        let cursor = render
-            .camera
-            .screen_to_world(vec2(mouse_position().0, mouse_position().1));
+        // let cursor = render
+        //     .camera
+        //     .screen_to_world(vec2(mouse_position().0, mouse_position().1));
 
         let dev_info = [
             format!(
@@ -46,43 +46,62 @@ impl DevInfo {
                 self.avg_fps,
                 self.avg_frame * 1000.0
             ),
-            format!(
-                "mouse position (pixels) = ({:+.2}, {:+.2})",
-                cursor.x, cursor.y
-            ),
-            format!("screen size: {:?}", get_screen().to_string()),
+            // format!(
+            //     "mouse position (pixels) = ({:+.2}, {:+.2})",
+            //     cursor.x, cursor.y
+            // ),
+            // format!("screen size: {:?}", get_screen().to_string()),
             format!(
                 "camera zoom = {:.1} ({:.2},{:.2})",
                 (screen_width() * render.camera.zoom.x).recip() * 2000.0,
-                render.camera.zoom.x.recip(),
-                render.camera.zoom.y.recip(),
+                render.camera.zoom.x,
+                render.camera.zoom.y,
             ),
+            // format!(
+            //     "camera offset: {}, {}",
+            //     render.camera.offset.x, render.camera.offset.y
+            // ),
             format!(
                 "player position (meters) = ({:+.2}, {:+.2})",
                 game.player.position.x / 256,
                 game.player.position.y / 256,
             ),
-            format!(
-                "player altitude (meters) = {:+.2}",
-                game.world.get_altitude(game.player.position)
-            ),
-            format!(
-                "player velocity (m/s)= {:+.2} ({:+.2},{:+.2})",
-                game.player.velocity.length(),
-                game.player.velocity.x,
-                game.player.velocity.y
-            ),
+            // format!(
+            //     "player altitude (meters) = {:+.2}",
+            //     game.world.get_altitude(game.player.position)
+            // ),
+            // format!(
+            //     "player velocity (m/s)= {:+.2} ({:+.2},{:+.2})",
+            //     game.player.velocity.length(),
+            //     game.player.velocity.x,
+            //     game.player.velocity.y
+            // ),
             format!(
                 "render space position: {:+.2}, {:+.2}",
                 render.render_space.position.x as f32 / 256.0,
                 render.render_space.position.y as f32 / 256.0,
             ),
-            format!("closest terrain index: {}", game.world.get_terrain_idx_beneath(render.render_space.position)),
-            format!("launch time: {:.2}", game.stats.time),
-            format!("   distance: {:.2}", game.stats.distance),
-            format!("max_altitude {:.2}", game.stats.max_altitude),
-            format!("  max_speed: {:.2}", game.stats.max_speed),
-            format!("gravity: {}", game.world.get_grativy(game.player.position).length())
+            format!(
+                "closest terrain index: {}",
+                game.world
+                    .get_terrain_idx_beneath(render.render_space.position)
+            ),
+            // format!("launch time: {:.2}", game.stats.time),
+            // format!("   distance: {:.2}", game.stats.distance),
+            // format!("max_altitude {:.2}", game.stats.max_altitude),
+            // format!("  max_speed: {:.2}", game.stats.max_speed),
+            // format!(
+            //     "gravity: {}",
+            //     game.world.get_grativy(game.player.position).length()
+            // ),
+            format!(
+                "Terrain {:?}",
+                game.world.get_terrain_class(
+                    game.world
+                        .get_terrain_idx_beneath(render.render_space.position)
+                )
+            ),
+            format!("{}", game.trebuchet.w_projectile()),
         ];
 
         let mut spacing = screen_height() + 10.0 - 20.0 * dev_info.len() as f32;

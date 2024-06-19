@@ -1,7 +1,7 @@
 use crate::{get_screen, utils::*};
 use macroquad::prelude::*;
 
-const VIEW_RADIUS: f32 = 100000.0; // meters
+const VIEW_RADIUS: f32 = 100_000.0; // meters
 
 #[derive(Default)]
 pub struct RenderSpace {
@@ -25,13 +25,13 @@ impl RenderSpace {
         to_meters(point - self.position) + get_screen() / 2.0
     }
 
-    pub fn draw(&self) {
-        draw_circle_lines(
-            screen_width() / 2.0,
-            screen_height() / 2.0,
-            self.radius,
-            50.0,
-            RED,
-        );
-    }
+    // pub fn draw(&self) {
+    //     draw_circle_lines(
+    //         screen_width() / 2.0,
+    //         screen_height() / 2.0,
+    //         self.radius,
+    //         50.0,
+    //         RED,
+    //     );
+    // }
 }

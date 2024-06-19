@@ -18,7 +18,12 @@ pub struct RenderAssets {
 
 impl RenderAssets {
     pub async fn init() -> Result<RenderAssets, GameError> {
-        let textures_to_load = ["bucko.png", "hud/resources_cardboard.png"];
+        let textures_to_load = [
+            "bucko.png",
+            "plushie_test.png",
+            "hud/resources_cardboard.png",
+            "trebuchet/cardboard_weight.png",
+        ];
 
         let mut texture_names = Vec::with_capacity(textures_to_load.len());
         let mut textures = Vec::with_capacity(textures_to_load.len());
@@ -27,8 +32,9 @@ impl RenderAssets {
             let name = path
                 .split('/')
                 .last()
-                .map(|s| s.strip_suffix(".png").unwrap());
-            texture_names.push(name.unwrap().into());
+                .and_then(|s| s.strip_suffix(".png"))
+                .unwrap();
+            texture_names.push(name.into());
             textures.push(load_texture(path).await?)
         }
 

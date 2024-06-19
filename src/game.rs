@@ -10,7 +10,7 @@ use world::*;
 use crate::GameError;
 // use upgrades::*;
 
-mod player;
+pub mod player;
 mod resources;
 mod stats;
 mod tech;
@@ -100,6 +100,7 @@ impl Game {
         self.state = GameState::PreLaunch;
         self.trebuchet.reset();
         self.player.position = self.trebuchet.projectile_position();
+        self.player.rotation = 0.0;
         self.day += 1;
     }
 }

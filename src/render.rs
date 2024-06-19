@@ -1,6 +1,7 @@
 use crate::{game::*, utils::*, GameError};
 use hud::draw_hud;
 use macroquad::prelude::*;
+use player::draw_player;
 use render_assets::RenderAssets;
 use render_space::RenderSpace;
 use trebuchet::draw_trebuchet;
@@ -8,6 +9,7 @@ use world::draw_world;
 
 mod hud;
 pub mod icon;
+mod player;
 mod render_assets;
 mod render_space;
 mod trebuchet;
@@ -154,11 +156,8 @@ impl Render {
             &game.world,
             &self.assets.terrain_material,
         );
-        draw_trebuchet(&self.render_space, &game.trebuchet);
-
-        // Placeholder player
-        let player_pos = self.render_space.to_screen(game.player.position);
-        draw_circle(player_pos.x, player_pos.y, 0.08, PINK);
+        draw_trebuchet(&self.render_space, &game.trebuchet, &self.assets);
+        draw_player(&self.render_space, &game.player, &self.assets);
 
         // self.render_space.draw();
 

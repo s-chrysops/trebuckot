@@ -1,17 +1,29 @@
+#![allow(dead_code)]
 use core::f32::consts;
 use macroquad::math::*;
 use crate::utils::*;
 
 const GRAVITY: f32 = 9.81;
+use TrebuchetMaterial as TM;
+
+#[derive(Default)]
+pub enum TrebuchetMaterial {
+    #[default]
+    Cardboard,
+    Wood1,
+    Wood2,
+    Steel,
+    Space,
+}
 
 #[derive(Debug, PartialEq)]
-pub enum TrebuchetState {
+enum TrebuchetState {
     Stage1,
     Stage2,
     Stage3,
 }
 
-struct TrebuchetArm {
+pub struct TrebuchetArm {
     long_length:  f32,
     short_length: f32,
     center:       f32,
@@ -19,10 +31,11 @@ struct TrebuchetArm {
     inertia:      f32,
     angle:        f32,
     velocity:     f32,
+    material:     TM,
 }
 
 impl TrebuchetArm {
-    fn new(long_length: f32, short_length: f32, mass: f32) -> Self {
+    fn new(long_length: f32, short_length: f32, mass: f32, material: TM) -> Self {
         Self {
             long_length,
             short_length,
@@ -31,42 +44,77 @@ impl TrebuchetArm {
             inertia:      mass * (long_length + short_length).powi(2) / 12.0,
             angle:        0.0,
             velocity:     0.0,
+            material,
+        }
+    }
+
+    pub fn texture(&self) -> &str {
+        match self.material {
+            TM::Cardboard => "cardboard_arm",
+            TM::Wood1 => "wood1_arm",
+            TM::Wood2 => "wood2_arm",
+            TM::Steel => "steel_arm",
+            TM::Space => "space_arm",
         }
     }
 }
 
-struct TrebuchetWeight {
-    length:     f32,
-    mass:       f32,
-    inertia:    f32,
-    angle:      f32,
-    velocity:   f32,
+pub struct TrebuchetWeight {
+    length:   f32,
+    mass:     f32,
+    inertia:  f32,
+    angle:    f32,
+    velocity: f32,
+    material: TM,
 }
 
 impl TrebuchetWeight {
-    fn new(length: f32, mass: f32) -> Self {
+    fn new(length: f32, mass: f32, material: TM) -> Self {
         Self {
             length,
             mass,
             inertia:  1.0,
             angle:    0.0,
             velocity: 0.0,
+            material,
+        }
+    }
+
+    pub fn texture(&self) -> &str {
+        match self.material {
+            TM::Cardboard => "cardboard_weight",
+            TM::Wood1 => "wood1_weight",
+            TM::Wood2 => "wood2_weight",
+            TM::Steel => "steel_weight",
+            TM::Space => "space_weight",
         }
     }
 }
 
-struct TrebuchetSling {
+pub struct TrebuchetSling {
     length:   f32,
     angle:    f32,
     velocity: f32,
+    material: TM,
 }
 
 impl TrebuchetSling {
-    fn new(length: f32) -> Self {
+    fn new(length: f32, material: TM) -> Self {
         Self {
             length,
             angle:    0.0,
             velocity: 0.0,
+            material,
+        }
+    }
+
+    pub fn texture(&self) -> (&str, &str) {
+        match self.material {
+            TM::Cardboard => ("cardboard_sling_close", "cardboard_sling_open"),
+            TM::Wood1 => ("wood1_sling_close", "wood1_sling_open"),
+            TM::Wood2 => ("wood2_sling_close", "wood2_sling_open"),
+            TM::Steel => ("steel_sling_close", "steel_sling_open"),
+            TM::Space => ("space_sling_close", "space_sling_open"),
         }
     }
 }
@@ -94,44 +142,51 @@ impl TrebuchetBuilder {
         self
     }
 
-    pub fn arm(mut self, long_length: f32, short_length: f32, mass: f32) -> Self {
-        self.arm = Some(TrebuchetArm::new(long_length, short_length, mass));
+    pub fn arm(mut self, long_length: f32, short_length: f32, mass: f32, material: TM) -> Self {
+        self.arm = Some(TrebuchetArm::new(long_length, short_length, mass, material));
         self
     }
 
-    pub fn weight(mut self, length: f32, mass: f32) -> Self {
-        self.weight = Some(TrebuchetWeight::new(length, mass));
+    pub fn weight(mut self, length: f32, mass: f32, material: TM) -> Self {
+        self.weight = Some(TrebuchetWeight::new(length, mass, material));
         self
     }
 
-    pub fn sling(mut self, length: f32) -> Self {
-        self.sling = Some(TrebuchetSling::new(length));
+    pub fn sling(mut self, length: f32, material: TM) -> Self {
+        self.sling = Some(TrebuchetSling::new(length, material));
         self
     }
 
-    pub fn build(self) -> Trebuchet {
-        Trebuchet {
+    pub fn center(mut self, center: f32) -> Self {
+        let mut arm = self.arm.expect("No arm constructed");
+        arm.center = center;
+        self.arm = Some(arm);
+        self
+    }
+
+    pub async fn build(self) -> Result<Trebuchet, crate::GameError> {
+        Ok(Trebuchet {
             position: self.position,
-            height: self.height.unwrap_or(5.6),
+            height: self.height.unwrap_or(1.0),
             m_proj: self.m_proj.unwrap_or(0.3),
-            arm: self.arm.unwrap_or(TrebuchetArm::new(8.0, 2.0, 12.0)),
-            weight: self.weight.unwrap_or(TrebuchetWeight::new(2.0, 100.0)),
-            sling: self.sling.unwrap_or(TrebuchetSling::new(8.0)),
+            arm: self.arm.unwrap_or(TrebuchetArm::new(1.6, 0.4, 0.25, TM::Cardboard)),
+            weight: self.weight.unwrap_or(TrebuchetWeight::new(0.5, 5.0, TM::Cardboard)),
+            sling: self.sling.unwrap_or(TrebuchetSling::new(1.6, TM::Cardboard)),
             state: TrebuchetState::Stage1,
-        }
+        })
     }
 } 
 
 pub struct Trebuchet {
     pub position: I64Vec2,
     pub height:   f32,
-    m_proj:   f32,
+    m_proj:       f32,
 
-    arm:    TrebuchetArm,
-    weight: TrebuchetWeight,
-    sling:  TrebuchetSling,
+    pub arm:    TrebuchetArm,
+    pub weight: TrebuchetWeight,
+    pub sling:  TrebuchetSling,
 
-    pub state: TrebuchetState,
+    state:    TrebuchetState,
 }
 
 impl Trebuchet {
@@ -165,6 +220,10 @@ impl Trebuchet {
         Vec2::from_angle(self.arm.angle + self.sling.angle).rotate(Vec2::NEG_X * self.sling.length) 
             * (self.arm.velocity + self.sling.velocity)
             + self.armsling_point().perp() * self.arm.velocity
+    }
+
+    pub fn w_projectile(&self) -> f32 {
+        self.arm.velocity + self.sling.velocity
     }
 
     pub fn reset(&mut self) {
@@ -267,8 +326,8 @@ impl Trebuchet {
             * aw.powi(2))) + lal * mp * aq.sin() * (lal * sq.sin() * aw.powi(2) - ls
             * ((aq + sq).cos() * sw * (sw + 2.0 * aw) / (aq  + sq).sin() + ((aq + sq).cos()
             / (aq + sq).sin() + lal * aq.cos() / (ls * (aq + sq).sin())) * aw.powi(2))) 
-            / (aq + sq).sin() - GRAVITY * mw * (las * aq.sin() + lw * (aq + wq).sin()) - las 
-            * lw * mw * wq.sin() * (aw.powi(2) - (aw + ww).powi(2)),
+            / (aq + sq).sin() - GRAVITY * mw * (las * aq.sin() + lw * (aq + wq).sin()) 
+            - las * lw * mw * wq.sin() * (aw.powi(2) - (aw + ww).powi(2)),
             -lw * mw * (GRAVITY * (aq + wq) + las * wq.sin() * aw.powi(2))
         );
 
@@ -341,37 +400,6 @@ impl Trebuchet {
             Vec3A::ZERO
         )
     }
-}
-
-use std::ops::{Add, Sub, Mul, Div};
-#[allow(dead_code)]
-fn rk4<T, U>(x: T, dt: f32, f: U) -> T
-where
-    T: Copy + Add<Output = T> + Div<f32, Output = T>,
-    f32: Mul<T, Output = T>,
-    U: Fn(f32, T) -> T,
-{
-    let k1 = dt * f(dt, x);
-    let k2 = dt * f(dt, x + 0.5 * k1);
-    let k3 = dt * f(dt, x + 0.5 * k1);
-    let k4 = dt * f(dt, x + k3);
-    x + (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0 
-}
-
-fn rk5<T, U>(x: T, dt: f32, f: U) -> T
-where
-    T: Copy + Add<Output = T> + Sub<Output = T> + Div<f32, Output = T>,
-    f32: Mul<T, Output = T>,
-    U: Fn(f32, T) -> T,
-{
-    let k1 = dt * f(dt, x);
-    let k2 = dt * f(dt, x + (1.0 / 4.0) * k1);
-    let k3 = dt * f(dt, x + (1.0 / 8.0) * k1 + (1.0 / 8.0) * k2);
-    let k4 = dt * f(dt, x - (1.0 / 2.0) * k2 + k3);
-    let k5 = dt * f(dt, x + (3.0 / 16.0) * k1 + (9.0 / 16.0) * k4);
-    let k6 = dt * f(dt, x - (3.0 / 7.0) * k1 + (2.0 / 7.0) * k2 + (12.0 / 7.0) 
-        * k3 - (12.0/ 7.0) * k4 + (8.0 / 7.0) * k5);
-    x + (7.0 * k1 + 32.0 * k3 + 12.0 * k4 + 32.0 * k5 + 7.0 * k6) / 90.0 
 }
 
 #[cfg(test)]

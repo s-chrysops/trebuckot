@@ -1,5 +1,6 @@
 use crate::{utils::*, Game, GameState};
 use macroquad::prelude::*;
+use std::f32::consts;
 
 const PHYSICS_TICK: f32 = 0.001;
 
@@ -26,21 +27,27 @@ impl Physics {
 
             // Basic movement
             if is_key_down(KeyCode::W) {
-                game.player.acceleration.y += game.player.move_speed;
+                game.player.acceleration +=
+                    Vec2::from_angle(game.player.rotation) * game.player.move_speed;
             }
             if is_key_down(KeyCode::S) {
-                game.player.acceleration.y -= game.player.move_speed;
+                game.player.acceleration -=
+                    Vec2::from_angle(game.player.rotation) * game.player.move_speed;
             }
             if is_key_down(KeyCode::A) {
-                game.player.acceleration.x -= game.player.move_speed;
+                game.player.rotation += 0.001
             }
             if is_key_down(KeyCode::D) {
-                game.player.acceleration.x += game.player.move_speed;
+                game.player.rotation -= 0.001;
             }
 
             if !game.trebuchet.run(PHYSICS_TICK) {
                 game.player.position = game.trebuchet.projectile_position();
                 game.player.velocity = game.trebuchet.v_projectile();
+                game.player.rotation = (game.trebuchet.armsling_point()
+                    - game.trebuchet.sling_point())
+                .to_angle()
+                    + consts::PI;
                 continue;
             }
 
@@ -51,8 +58,10 @@ impl Physics {
 
 fn do_physics(game: &mut Game, tick: f32) {
     let terrain_idx = game.world.get_terrain_idx_beneath(game.player.position);
-    let terrain_a = game.world.get_terrain_at(terrain_idx);
-    let terrain_b = game.world.get_terrain_at((terrain_idx + 1) % game.world.terrain.circ);
+    let terrain_a = game.world.get_terrain(terrain_idx);
+    let terrain_b = game
+        .world
+        .get_terrain((terrain_idx + 1) % game.world.terrain.circ);
 
     // Apply gravity if player above terrain
     if orientation(terrain_a, terrain_b, game.player.position) == 1 {
