@@ -4,6 +4,10 @@ use std::f32::consts;
 use super::perlin::PerlinNoise;
 use super::WorldClass;
 
+type Kilometers = usize;
+type Meters = f32;
+type TerrainIndex = (TerrainClass, usize);
+
 const AMPL_PLAIN: f32 = 500.0;
 const AMPL_HILLS: f32 = 1000.0;
 const AMPL_ROCKY: f32 = 2000.0;
@@ -12,115 +16,87 @@ const FREQ_PLAIN: f32 = 0.001;
 const FREQ_HILLS: f32 = 0.01;
 const FREQ_ROCKY: f32 = 0.1;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TerrainClass {
-    Plain(usize),
-    Hills(usize),
-    Desert(usize),
-    Rocky(usize),
-    Ocean(usize),
+    Plain,
+    Hills,
+    Sands,
+    Rocky,
+    Ocean,
 }
 
 pub struct Terrain {
-    pub circ:       usize, // Kilometers
-    pub height_map: Vec<f32>,
-    // pub has_water:  Vec<bool>,
+    pub circ:       Kilometers,
+    pub height_map: Vec<Meters>,
+    pub class_map:  Vec<TerrainIndex>,
 }
 
 impl Terrain {
-    pub fn new(
-        radius: f32,
-        class: WorldClass,
-        preset: Option<&[TerrainClass]>,
-    ) -> Self {
-        let circ = (radius / 1000.0 * consts::TAU).floor() as usize;
+    pub fn new(radius: Meters, _class: WorldClass, preset: Option<&[TerrainIndex]>) -> Terrain {
+        let circ = (radius / 1000.0 * consts::TAU).floor() as Kilometers;
 
-        let height_map = match preset {
-            Some(sections) => generate_height_map(circ, class, sections),
-            None => vec![0.0; circ], // TODO replace with terrain section generator
-        };
+        let sections = preset.map(|s| s.to_vec()).unwrap_or_else(|| _generate_sections(circ, _class));
+        let mut height_map = generate_height_map(circ, &sections);
+        let mut class_map = Vec::<TerrainIndex>::with_capacity(sections.len());
 
-        // let has_water = vec![false; circ];
+        // Sink oceans and smoothen terrain transitions
+        let mut current_index = 0;
+        sections.into_iter().for_each(|(class, length)| {
+            if let TerrainClass::Ocean = class {
+                let end = current_index + length;
+                let factor = consts::PI / length as f32;
+                let mut i = current_index;
+                while i < end {
+                    height_map[i] -= 4000.0 * ((i - current_index) as f32 * factor).sin();
+                    i += 1;
+                }
+            }
+            smooth_at(&mut height_map, current_index);
+            current_index += length;
+            class_map.push((class, current_index));
+        });
 
-        Self {
+        Terrain {
             circ,
             height_map,
-            // has_water,
+            class_map,
         }
     }
 }
 
-fn generate_height_map(circ: usize, _class: WorldClass, sections: &[TerrainClass]) -> Vec<f32> {
+fn generate_height_map(circ: Kilometers, sections: &[TerrainIndex]) -> Vec<Meters> {
     let ami_cute = u64::from_le_bytes("ami cute".as_bytes().try_into().unwrap());
     let noise = PerlinNoise::new(ami_cute, circ);
 
-    let mut current_idx: usize = 0;
-    let mut transition_points: Vec<usize> = Vec::with_capacity(sections.len());
-    let mut noise_parameters: Vec<Vec<(f32, f32)>> = Vec::with_capacity(sections.len());
-    let mut oceans: Vec<(usize, usize)> = Vec::new();
-
-    sections.iter().for_each(|section| {
-        match section {
-            TerrainClass::Plain(length) => {
-                current_idx += length;
-                noise_parameters.push(vec![(AMPL_PLAIN, FREQ_PLAIN); *length])
-            }
-            TerrainClass::Hills(length) => {
-                current_idx += length;
-                noise_parameters.push(vec![(AMPL_HILLS, FREQ_HILLS); *length])
-            }
-            TerrainClass::Desert(length) => {
-                current_idx += length;
-                noise_parameters.push(vec![(AMPL_HILLS, FREQ_PLAIN); *length])
-            }
-            TerrainClass::Rocky(length) => {
-                current_idx += length;
-                noise_parameters.push(vec![(AMPL_ROCKY, FREQ_ROCKY); *length])
-            }
-            TerrainClass::Ocean(length) => {
-                oceans.push((current_idx % circ, *length));
-                current_idx += length;
-                noise_parameters.push(vec![(-AMPL_HILLS, FREQ_ROCKY); *length])
-            }
-        }
-        transition_points.push(current_idx % circ);
-    });
-
-    let mut height_map: Vec<f32> = noise_parameters
+    sections
         .iter()
-        .flatten()
+        .flat_map(|(class, length)| match class {
+            TerrainClass::Plain => vec![(AMPL_PLAIN, FREQ_PLAIN); *length],
+            TerrainClass::Hills => vec![(AMPL_HILLS, FREQ_HILLS); *length],
+            TerrainClass::Sands => vec![(AMPL_HILLS, FREQ_PLAIN); *length],
+            TerrainClass::Rocky => vec![(AMPL_ROCKY, FREQ_ROCKY); *length],
+            TerrainClass::Ocean => vec![(-AMPL_HILLS, FREQ_ROCKY); *length],
+        })
         .enumerate()
-        .map(|(i, (ampl, freq))| noise.get(i as f32, *ampl, *freq) + ampl)
-        .collect();
-
-    for (start, length) in oceans {
-        let end = start + length;
-        let mut i = start + 1;
-        let factor = consts::PI / length as f32;
-        while i < end {
-            height_map[i] -= 4000.0 * ((i - start) as f32 * factor).sin();
-            i += 1;
-        }
-    }
-
-    transition_points.iter().for_each(|p| {
-        smooth_at(&mut height_map, *p);
-    });
-
-    height_map
+        .map(|(i, (ampl, freq))| noise.get(i as f32, ampl, freq) + ampl)
+        .collect()
 }
 
-const SMOOTH_LENGTH: usize = 100;
-const FACTOR: f32 = consts::PI / SMOOTH_LENGTH as f32;
-fn smooth_at(array: &mut [f32], idx: usize) {
-    let len = array.len();
-    let prev_idx = (idx + len - 1) % len;
-    let mid = (array[idx] - array[prev_idx]) / 2.0;
+fn _generate_sections(_circ: Kilometers, _class: WorldClass) -> Vec<TerrainIndex> {
+    todo!()
+}
 
-    let mut i = (idx + len - SMOOTH_LENGTH / 2) % len;
+const SMOOTH_LENGTH: Kilometers = 30;
+const FACTOR: f32 = consts::PI / SMOOTH_LENGTH as f32;
+fn smooth_at(array: &mut [Meters], index: Kilometers) {
+    let len = array.len();
+    let prev_index = (index + len - 1) % len;
+    let avg = (array[index] - array[prev_index]) / 2.0;
+
+    let mut i = (index + len - SMOOTH_LENGTH / 2) % len;
     (0..SMOOTH_LENGTH).for_each(|j| {
         let weight = (j as f32 * FACTOR).cos();
-        array[i % len] -= mid * (weight - weight.signum());
+        array[i % len] -= avg * (weight - weight.signum());
         i += 1;
     });
 }

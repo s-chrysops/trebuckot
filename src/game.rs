@@ -54,15 +54,15 @@ impl Game {
         use terrain::TerrainClass as TC;
         // BEarth
         let terra = [
-            TC::Ocean(4000),  // Batlantic Ocean
-            TC::Plain(8000),  // North Bamerica
-            TC::Ocean(12800), // Bacific Ocean
-            TC::Desert(3000), // Baustralia
-            TC::Ocean(1000),  // Bindian Ocean
-            TC::Rocky(9000),  // Beurasia
-            TC::Ocean(130),   // Benglish Channel
-            TC::Hills(500),   // Great Beantain
-            TC::Ocean(1600),  // Batlantic cont.
+            (TC::Ocean, 4000),  // Batlantic Ocean
+            (TC::Plain, 8000),  // North Bamerica
+            (TC::Ocean, 12800), // Bacific Ocean
+            (TC::Sands, 3000),  // Baustralia
+            (TC::Ocean, 1000),  // Bindian Ocean
+            (TC::Rocky, 9000),  // Beurasia
+            (TC::Ocean, 130),   // Benglish Channel
+            (TC::Hills, 500),   // Great Beantain
+            (TC::Ocean, 1600),  // Batlantic cont.
         ];
 
         let world = World::new(
@@ -74,7 +74,7 @@ impl Game {
             Some(&terra),
         );
 
-        let mut trebuchet = Trebuchet::init(START_POINT).build();
+        let mut trebuchet = Trebuchet::init(START_POINT).build().await?;
         trebuchet.reset();
         let player = Player::new(trebuchet.projectile_position());
         let resources = Resources::default();

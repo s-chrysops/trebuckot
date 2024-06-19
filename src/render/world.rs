@@ -2,7 +2,8 @@ use super::render_space::RenderSpace;
 use crate::world::World;
 use macroquad::prelude::*;
 
-const TERRAIN_DEPTH: f32 = 50_000.0;
+const TERRAIN_DEPTH: f32 = -50_000.0;
+const MAX_SEA_DEPTH: f32 = -10_000.0;
 
 pub fn draw_world(render_space: &RenderSpace, world: &World, material: &Material) {
     let circ = world.terrain.circ;
@@ -22,28 +23,38 @@ pub fn draw_world(render_space: &RenderSpace, world: &World, material: &Material
         (r_bound..l_bound).collect()
     };
 
-    active_indicies.into_iter().for_each(|index| {
+    for index in active_indicies.iter() {
         let next_index = (index + 1) % circ;
 
-        let surface_a = world.get_terrain_at(index);
-        let surface_b = world.get_terrain_at(next_index);
-
-        let bottom_a = world.get_sealevel_at(index, Some(TERRAIN_DEPTH));
-        let bottom_b = world.get_sealevel_at(next_index, Some(TERRAIN_DEPTH));
-
+        if world.terrain.height_map[*index].is_sign_positive()
+            && world.terrain.height_map[next_index].is_sign_positive()
         {
-            let sealevel_a = world.get_sealevel_at(index, None);
-            let sealevel_b = world.get_sealevel_at(next_index, None);
-
-            // Draw water
-            draw_quadrilateral(
-                render_space.to_screen(sealevel_b),
-                render_space.to_screen(sealevel_a),
-                render_space.to_screen(bottom_a),
-                render_space.to_screen(bottom_b),
-                BLUE,
-            );
+            continue;
         }
+        
+        let surface_a = world.get_from_sealevel(*index, 0.0);
+        let surface_b = world.get_from_sealevel(next_index, 0.0);
+
+        let bottom_a = world.get_from_sealevel(*index, MAX_SEA_DEPTH);
+        let bottom_b = world.get_from_sealevel(next_index, MAX_SEA_DEPTH);
+
+        draw_quadrilateral(
+            render_space.to_screen(surface_b),
+            render_space.to_screen(surface_a),
+            render_space.to_screen(bottom_a),
+            render_space.to_screen(bottom_b),
+            BLUE,
+        );
+    }
+
+    for index in active_indicies.iter() {
+        let next_index = (index + 1) % circ;
+
+        let surface_a = world.get_terrain(*index);
+        let surface_b = world.get_terrain(next_index);
+
+        let bottom_a = world.get_from_sealevel(*index, TERRAIN_DEPTH);
+        let bottom_b = world.get_from_sealevel(next_index, TERRAIN_DEPTH);
 
         gl_use_material(material);
         material.set_uniform("EdgeColor", vec4(0.253, 0.924, 0.039, 1.0));
@@ -56,7 +67,7 @@ pub fn draw_world(render_space: &RenderSpace, world: &World, material: &Material
             GREEN,
         );
         gl_use_default_material();
-    });
+    }
 }
 
 // Draw quadrilateral from four points starting at the top-left corner proceeding clockwise

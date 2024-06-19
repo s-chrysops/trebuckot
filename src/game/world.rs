@@ -35,7 +35,7 @@ impl World {
         radius: f32,
         mass: f32,
         class: WorldClass,
-        preset: Option<&[TerrainClass]>,
+        preset: Option<&[(TerrainClass, usize)]>,
     ) -> Self {
         Self {
             system,
@@ -61,16 +61,25 @@ impl World {
             % self.terrain.circ as f32) as usize
     }
 
-    pub fn get_terrain_at(&self, index: usize) -> I64Vec2 {
+    pub fn get_terrain_class(&self, index: usize) -> TerrainClass {
+        self.terrain
+            .class_map
+            .iter()
+            .find(|(_, length)| index <= *length)
+            .unwrap()
+            .0
+    }
+
+    pub fn get_terrain(&self, index: usize) -> I64Vec2 {
         to_i64coords(polar_to_cartesian(
             self.radius + self.terrain.height_map[index],
             index as f32 * 1000.0 / self.radius,
         )) + self.position
     }
 
-    pub fn get_sealevel_at(&self, index: usize, lower: Option<f32>) -> I64Vec2{
+    pub fn get_from_sealevel(&self, index: usize, raise: f32) -> I64Vec2 {
         to_i64coords(polar_to_cartesian(
-            self.radius - lower.unwrap_or(0.0),
+            self.radius + raise,
             index as f32 * 1000.0 / self.radius,
         )) + self.position
     }
