@@ -25,46 +25,7 @@ pub enum TerrainClass {
     Ocean,
 }
 
-pub struct Terrain {
-    pub circ:       Kilometers,
-    pub height_map: Vec<Meters>,
-    pub class_map:  Vec<TerrainIndex>,
-}
-
-impl Terrain {
-    pub fn new(radius: Meters, _class: WorldClass, preset: Option<&[TerrainIndex]>) -> Terrain {
-        let circ = (radius / 1000.0 * consts::TAU).floor() as Kilometers;
-
-        let sections = preset.map(|s| s.to_vec()).unwrap_or_else(|| _generate_sections(circ, _class));
-        let mut height_map = generate_height_map(circ, &sections);
-        let mut class_map = Vec::<TerrainIndex>::with_capacity(sections.len());
-
-        // Sink oceans and smoothen terrain transitions
-        let mut current_index = 0;
-        sections.into_iter().for_each(|(class, length)| {
-            if let TerrainClass::Ocean = class {
-                let end = current_index + length;
-                let factor = consts::PI / length as f32;
-                let mut i = current_index;
-                while i < end {
-                    height_map[i] -= 4000.0 * ((i - current_index) as f32 * factor).sin();
-                    i += 1;
-                }
-            }
-            smooth_at(&mut height_map, current_index);
-            current_index += length;
-            class_map.push((class, current_index));
-        });
-
-        Terrain {
-            circ,
-            height_map,
-            class_map,
-        }
-    }
-}
-
-fn generate_height_map(circ: Kilometers, sections: &[TerrainIndex]) -> Vec<Meters> {
+pub fn gen_height_map(circ: Kilometers, sections: &[TerrainIndex]) -> Vec<Meters> {
     let ami_cute = u64::from_le_bytes("ami cute".as_bytes().try_into().unwrap());
     let noise = PerlinNoise::new(ami_cute, circ);
 
@@ -82,13 +43,13 @@ fn generate_height_map(circ: Kilometers, sections: &[TerrainIndex]) -> Vec<Meter
         .collect()
 }
 
-fn _generate_sections(_circ: Kilometers, _class: WorldClass) -> Vec<TerrainIndex> {
+pub fn _gen_sections(_circ: Kilometers, _class: WorldClass) -> Vec<TerrainIndex> {
     todo!()
 }
 
 const SMOOTH_LENGTH: Kilometers = 30;
 const FACTOR: f32 = consts::PI / SMOOTH_LENGTH as f32;
-fn smooth_at(array: &mut [Meters], index: Kilometers) {
+pub fn smooth_at(array: &mut [Meters], index: Kilometers) {
     let len = array.len();
     let prev_index = (index + len - 1) % len;
     let avg = (array[index] - array[prev_index]) / 2.0;

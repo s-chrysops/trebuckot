@@ -6,10 +6,10 @@ const TERRAIN_DEPTH: f32 = -50_000.0;
 const MAX_SEA_DEPTH: f32 = -10_000.0;
 
 pub fn draw_world(render_space: &RenderSpace, world: &World, material: &Material) {
-    let circ = world.terrain.circ;
-    let terrain_idx = world.get_terrain_idx_beneath(render_space.position);
+    let circ = world.height_map.len();
+    let terrain_idx = world.terrain_index_beneath(render_space.position);
 
-    let range = ((render_space.radius.powi(2) - world.get_altitude(render_space.position).powi(2))
+    let range = ((render_space.radius.powi(2) - world.altitude_at(render_space.position).powi(2))
         .sqrt()
         / 1000.0) as usize
         + 24;
@@ -26,17 +26,17 @@ pub fn draw_world(render_space: &RenderSpace, world: &World, material: &Material
     for index in active_indicies.iter() {
         let next_index = (index + 1) % circ;
 
-        if world.terrain.height_map[*index].is_sign_positive()
-            && world.terrain.height_map[next_index].is_sign_positive()
+        if world.height_map[*index].is_sign_positive()
+            && world.height_map[next_index].is_sign_positive()
         {
             continue;
         }
-        
-        let surface_a = world.get_from_sealevel(*index, 0.0);
-        let surface_b = world.get_from_sealevel(next_index, 0.0);
 
-        let bottom_a = world.get_from_sealevel(*index, MAX_SEA_DEPTH);
-        let bottom_b = world.get_from_sealevel(next_index, MAX_SEA_DEPTH);
+        let surface_a = world.point_from_sealevel(*index, 0.0);
+        let surface_b = world.point_from_sealevel(next_index, 0.0);
+
+        let bottom_a = world.point_from_sealevel(*index, MAX_SEA_DEPTH);
+        let bottom_b = world.point_from_sealevel(next_index, MAX_SEA_DEPTH);
 
         draw_quadrilateral(
             render_space.to_screen(surface_b),
@@ -50,11 +50,11 @@ pub fn draw_world(render_space: &RenderSpace, world: &World, material: &Material
     for index in active_indicies.iter() {
         let next_index = (index + 1) % circ;
 
-        let surface_a = world.get_terrain(*index);
-        let surface_b = world.get_terrain(next_index);
+        let surface_a = world.surface(*index);
+        let surface_b = world.surface(next_index);
 
-        let bottom_a = world.get_from_sealevel(*index, TERRAIN_DEPTH);
-        let bottom_b = world.get_from_sealevel(next_index, TERRAIN_DEPTH);
+        let bottom_a = world.point_from_sealevel(*index, TERRAIN_DEPTH);
+        let bottom_b = world.point_from_sealevel(next_index, TERRAIN_DEPTH);
 
         gl_use_material(material);
         material.set_uniform("EdgeColor", vec4(0.253, 0.924, 0.039, 1.0));

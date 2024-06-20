@@ -84,7 +84,7 @@ impl DevInfo {
             format!(
                 "closest terrain index: {}",
                 game.world
-                    .get_terrain_idx_beneath(render.render_space.position)
+                    .terrain_index_beneath(render.render_space.position)
             ),
             // format!("launch time: {:.2}", game.stats.time),
             // format!("   distance: {:.2}", game.stats.distance),
@@ -96,9 +96,9 @@ impl DevInfo {
             // ),
             format!(
                 "Terrain {:?}",
-                game.world.get_terrain_class(
+                game.world.terrain_class(
                     game.world
-                        .get_terrain_idx_beneath(render.render_space.position)
+                        .terrain_index_beneath(render.render_space.position)
                 )
             ),
             format!("{}", game.trebuchet.w_projectile()),

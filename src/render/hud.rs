@@ -62,7 +62,7 @@ pub fn draw_hud(game: &Game, assets: &RenderAssets) {
             };
 
             let speed = format!("{:.2}m/s", game.player.velocity.length());
-            let altitude = format!("{:.0}m", game.world.get_altitude(game.player.position));
+            let altitude = format!("{:.0}m", game.world.altitude_at(game.player.position));
             draw_text_ex(&speed, margin_x, margin_y + 24.0, speed_params);
             draw_text_ex(&altitude, margin_x, margin_y + 60.0, altitude_params);
         }

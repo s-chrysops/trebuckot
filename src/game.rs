@@ -20,14 +20,6 @@ pub mod world;
 
 const START_POINT: I64Vec2 = i64vec2(0, 1_631_092_932);
 
-#[allow(dead_code)]
-pub enum Era {
-    Cardboard,
-    Wood,
-    Steel,
-    Space,
-}
-
 #[derive(PartialEq, Debug)]
 pub enum GameState {
     Paused,

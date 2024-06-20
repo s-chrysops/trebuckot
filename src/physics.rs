@@ -44,10 +44,9 @@ impl Physics {
             if !game.trebuchet.run(PHYSICS_TICK) {
                 game.player.position = game.trebuchet.projectile_position();
                 game.player.velocity = game.trebuchet.v_projectile();
-                game.player.rotation = (game.trebuchet.armsling_point()
-                    - game.trebuchet.sling_point())
-                .to_angle()
-                    + consts::PI;
+                game.player.rotation =
+                    (game.trebuchet.armsling_point() - game.trebuchet.sling_point()).to_angle()
+                        + consts::PI;
                 continue;
             }
 
@@ -57,22 +56,22 @@ impl Physics {
 }
 
 fn do_physics(game: &mut Game, tick: f32) {
-    let terrain_idx = game.world.get_terrain_idx_beneath(game.player.position);
-    let terrain_a = game.world.get_terrain(terrain_idx);
+    let terrain_idx = game.world.terrain_index_beneath(game.player.position);
+    let terrain_a = game.world.surface(terrain_idx);
     let terrain_b = game
         .world
-        .get_terrain((terrain_idx + 1) % game.world.terrain.circ);
+        .surface((terrain_idx + 1) % game.world.terrain.circ);
 
     // Apply gravity if player above terrain
-    if orientation(terrain_a, terrain_b, game.player.position) == 1 {
-        game.player.acceleration += game.world.get_grativy(game.player.position);
+    if orientation(terrain_a, terrain_b, game.player.position) == Orientation::Clockwise {
+        game.player.acceleration += game.world.grativy_at(game.player.position);
     }
 
     let displacement =
         to_i64coords((game.player.velocity * tick) + 0.5 * game.player.acceleration * tick.powi(2));
     let next_position = game.player.position + displacement;
 
-    if orientation(terrain_a, terrain_b, next_position) != 1 {
+    if orientation(terrain_a, terrain_b, next_position) != Orientation::Clockwise {
         game.player.position =
             get_intersection(terrain_a, terrain_b, game.player.position, next_position)
                 .unwrap_or(game.player.position);
@@ -87,7 +86,7 @@ fn do_physics(game: &mut Game, tick: f32) {
     game.player.position = next_position;
 
     // Leapfrog intergration
-    let next_acceleration = game.world.get_grativy(next_position);
+    let next_acceleration = game.world.grativy_at(next_position);
     game.player.velocity += 0.5 * (game.player.acceleration + next_acceleration) * tick;
 
     game.player.acceleration = Vec2::ZERO;
@@ -97,7 +96,7 @@ fn do_physics(game: &mut Game, tick: f32) {
     game.stats.max_altitude = game
         .stats
         .max_altitude
-        .max(game.world.get_altitude(game.player.position));
+        .max(game.world.altitude_at(game.player.position));
     game.stats.max_speed = game.stats.max_speed.max(game.player.velocity.length())
 }
 
@@ -111,15 +110,21 @@ fn do_physics(game: &mut Game, tick: f32) {
 //     o1 != o2 && o3 != o4
 // }
 
+#[derive(PartialEq)]
+enum Orientation {
+    Clockwise,
+    AntiClockwise,
+    Colinear,
+}
+
 /// Orientation of ordered points
-///
-/// clockwise        ->  1
-///
-/// anti-clockwise   -> -1
-///
-/// colinear         ->  0
-fn orientation(p: I64Vec2, q: I64Vec2, r: I64Vec2) -> i8 {
-    ((q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)).signum() as i8
+fn orientation(p: I64Vec2, q: I64Vec2, r: I64Vec2) -> Orientation {
+    match ((q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)).signum() {
+        1 => Orientation::Clockwise,
+        -1 => Orientation::AntiClockwise,
+        0 => Orientation::Colinear,
+        _ => unreachable!(),
+    }
 }
 
 // | |a-b| a-b |
