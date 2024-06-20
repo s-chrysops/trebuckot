@@ -60,7 +60,7 @@ fn do_physics(game: &mut Game, tick: f32) {
     let terrain_a = game.world.surface(terrain_idx);
     let terrain_b = game
         .world
-        .surface((terrain_idx + 1) % game.world.terrain.circ);
+        .surface((terrain_idx + 1) % game.world.height_map.len());
 
     // Apply gravity if player above terrain
     if orientation(terrain_a, terrain_b, game.player.position) == Orientation::Clockwise {
