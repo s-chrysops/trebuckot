@@ -2,6 +2,7 @@
 use macroquad::{
     color::*,
     color_u8,
+    math::RectOffset,
     texture::Image,
     ui::{root_ui, Skin},
 };
@@ -20,12 +21,21 @@ pub struct GuiAssets {
 impl GuiAssets {
     pub async fn init() -> Result<GuiAssets, GameError> {
         let title_skin = {
+            let label_style = root_ui()
+                .style_builder()
+                .font(include_bytes!("../../assets/VT323.ttf"))?
+                .font_size(24)
+                .text_color(WHITE)
+                .margin(macroquad::math::RectOffset::new(10.0, 10.0, 0.0, 0.0))
+                .build();
             let button_style = root_ui()
                 .style_builder()
                 .font(include_bytes!("../../assets/VT323.ttf"))?
                 .font_size(36)
                 .text_color(WHITE)
                 .background(Image::empty())
+                .color_selected(RED)
+                .margin(RectOffset::new(0.0, 0.0, 0.0, 0.0))
                 .build();
             let window_style = root_ui()
                 .style_builder()
@@ -39,6 +49,7 @@ impl GuiAssets {
                 .color(color_u8!(0, 0, 0, 0))
                 .build();
             Skin {
+                label_style,
                 button_style,
                 window_style,
                 group_style,

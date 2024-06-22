@@ -1,5 +1,5 @@
 use super::render_space::RenderSpace;
-use crate::world::World;
+use crate::world::{World, WorldClass};
 use macroquad::prelude::*;
 
 const TERRAIN_DEPTH: f32 = -50_000.0;
@@ -45,6 +45,10 @@ pub fn draw_world(render_space: &RenderSpace, world: &World, material: &Material
             render_space.to_screen(bottom_b),
             BLUE,
         );
+    }
+
+    if world.class == WorldClass::Gas {
+        return
     }
 
     for index in active_indicies.iter() {

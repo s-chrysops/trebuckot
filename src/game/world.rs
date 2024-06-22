@@ -12,14 +12,12 @@ type TerrainIndex = (TerrainClass, usize);
 const GRAVITATION: f32 = 6.6743e-11;
 
 #[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WorldClass {
     Minshara,
     Desert,
     Demon,
-    Moon,
     Gas,
-    Star,
 }
 
 pub struct World {

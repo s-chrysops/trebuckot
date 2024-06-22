@@ -2,6 +2,8 @@ use crate::{get_screen, Game, GameState, Scene};
 use macroquad::prelude::*;
 use macroquad::ui::{root_ui, widgets};
 
+use super::UpgradesState;
+
 pub async fn prelaunch(game: &mut Game) -> Scene {
     let button_size = vec2(400.0, 120.0);
 
@@ -21,7 +23,7 @@ pub async fn prelaunch(game: &mut Game) -> Scene {
         .size(button_size)
         .ui(&mut root_ui())
     {
-        next_scene = Some(Scene::Upgrades(2, None))
+        next_scene = Some(Scene::Upgrades(UpgradesState::default()));
     }
 
     match next_scene {

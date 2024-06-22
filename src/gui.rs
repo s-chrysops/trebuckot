@@ -6,8 +6,8 @@ use landed::landed;
 use paused::paused;
 use prelaunch::prelaunch;
 use settings::settings;
-use title::title;
-use upgrades::upgrades;
+use title::*;
+use upgrades::*;
 
 mod gui_assets;
 mod landed;
@@ -19,12 +19,10 @@ mod upgrades;
 
 #[derive(Debug, Clone)]
 pub enum Scene {
-    MainMenu,
-    Data,
-    Credits,
+    MainMenu(TitleState),
     Paused,
     PreLaunch,
-    Upgrades(u32, Option<usize>),
+    Upgrades(UpgradesState),
     Launched,
     Landed,
     Settings(Box<Scene>),
@@ -39,19 +37,19 @@ impl Gui {
     pub async fn init() -> Result<Gui, GameError> {
         let assets = GuiAssets::init().await?;
         Ok(Gui {
-            scene: Scene::MainMenu,
+            scene: Scene::MainMenu(TitleState::default()),
             assets,
         })
     }
 
     pub async fn update(&mut self, game: &mut Game) {
         self.scene = match &self.scene {
-            Scene::MainMenu => {
+            Scene::MainMenu(state) => {
                 root_ui().push_skin(&self.assets.title_skin);
-                title(game).await
+                title(*state, game).await
             }
-            Scene::Data => todo!(),
-            Scene::Credits => todo!(),
+            // Scene::Data => todo!(),
+            // Scene::Credits => todo!(),
             Scene::Paused => {
                 root_ui().push_skin(&self.assets.paused_skin);
                 paused(game).await
@@ -60,9 +58,9 @@ impl Gui {
                 root_ui().push_skin(&self.assets.prelaunch_skin);
                 prelaunch(game).await
             }
-            Scene::Upgrades(tab, tech) => {
+            Scene::Upgrades(state) => {
                 root_ui().push_skin(&self.assets.upgrades_skin);
-                upgrades(*tab, *tech, game).await
+                upgrades(*state, game).await
             }
             Scene::Launched => match game.state {
                 GameState::Paused => Scene::Paused,
@@ -75,7 +73,7 @@ impl Gui {
             }
             Scene::Settings(last_scene) => {
                 root_ui().push_skin(&self.assets.settings_skin);
-                settings(last_scene.clone()).await
+                settings(game, last_scene.clone()).await
             }
         };
         root_ui().pop_skin();

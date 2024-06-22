@@ -43,8 +43,8 @@ pub fn gen_height_map(circ: Kilometers, sections: &[TerrainIndex]) -> Vec<Meters
         .collect()
 }
 
-pub fn _gen_sections(_circ: Kilometers, _class: WorldClass) -> Vec<TerrainIndex> {
-    todo!()
+pub fn _gen_sections(circ: Kilometers, _class: WorldClass) -> Vec<TerrainIndex> {
+    vec![(TerrainClass::Plain, circ)]
 }
 
 const SMOOTH_LENGTH: Kilometers = 30;

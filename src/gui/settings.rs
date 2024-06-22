@@ -1,8 +1,8 @@
-use crate::{get_screen, Scene};
+use crate::{get_screen, Game, Scene};
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets};
 
-pub async fn settings(last_scene: Box<Scene>) -> Scene {
+pub async fn settings(game: &mut Game, last_scene: Box<Scene>) -> Scene {
     let window_size = vec2(800.0, 600.0);
     let window_pos = (get_screen() - window_size) / 2.0;
     let button_size = vec2(200.0, 60.0);
@@ -13,14 +13,17 @@ pub async fn settings(last_scene: Box<Scene>) -> Scene {
         .titlebar(false)
         .movable(false)
         .ui(&mut root_ui(), |ui| {
-        if widgets::Button::new("Close")
-            .position((window_size - button_size) / 2.0 + vec2(0.0, 240.0))
-            .size(button_size)
-            .ui(ui)
-        {
-            next_scene = Some(last_scene.clone());
-        }
-    });
+            widgets::Checkbox::new(hash!())
+                .label("Autosave")
+                .ui(ui, &mut game.settings.autosave);
+            if widgets::Button::new("Close")
+                .position((window_size - button_size) / 2.0 + vec2(0.0, 240.0))
+                .size(button_size)
+                .ui(ui)
+            {
+                next_scene = Some(last_scene.clone());
+            }
+        });
     // root_ui().pop_skin();
 
     match next_scene {
