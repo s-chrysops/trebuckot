@@ -5,15 +5,15 @@ use macroquad::prelude::*;
 const PHYSICS_TICK: f32 = 0.001;
 
 pub struct Physics {
-    time_acc:            f32,
-    player_displacement: Vec2,
+    time_acc:           f32,
+    float_displacement: Vec2,
 }
 
 impl Physics {
     pub async fn init() -> Physics {
         Physics {
-            time_acc:            0.0,
-            player_displacement: Vec2::ZERO,
+            time_acc:           0.0,
+            float_displacement: Vec2::ZERO,
         }
     }
 
@@ -53,14 +53,12 @@ impl Physics {
                 continue;
             }
 
-            // do_physics(game, PHYSICS_TICK);
-
             game.player.acceleration += game.world.grativy_at(game.player.position);
             let displacement = (game.player.velocity * PHYSICS_TICK)
                 + 0.5 * game.player.acceleration * PHYSICS_TICK.powi(2);
-            self.player_displacement += displacement;
+            self.float_displacement += displacement;
 
-            let next_position = game.player.position + to_i64coords(self.player_displacement);
+            let next_position = game.player.position + to_i64coords(self.float_displacement);
             let next_gravity = game.world.grativy_at(next_position);
             game.player.velocity += 0.5 * (game.player.acceleration + next_gravity) * PHYSICS_TICK;
             game.player.acceleration = Vec2::ZERO;
@@ -77,15 +75,15 @@ impl Physics {
                 game.player.position = point;
                 game.player.velocity = Vec2::ZERO;
                 game.state = GameState::Landed;
-                self.player_displacement = Vec2::ZERO;
+                self.float_displacement = Vec2::ZERO;
                 break;
             }
         }
 
-        let final_displacement: I64Vec2;
-        (final_displacement, self.player_displacement) =
-            to_i64coords_with_rem(self.player_displacement);
-        game.player.position += final_displacement;
+        let i64_displacement: I64Vec2;
+        (i64_displacement, self.float_displacement) =
+            to_i64coords_with_rem(self.float_displacement);
+        game.player.position += i64_displacement;
     }
 }
 
@@ -102,45 +100,6 @@ fn ground_collision(game: &Game, displacement: Vec2) -> Option<I64Vec2> {
         return None;
     }
     get_intersection(terrain_a, terrain_b, game.player.position, next_position)
-}
-
-fn _do_physics(game: &mut Game, tick: f32) {
-    game.player.acceleration += game.world.grativy_at(game.player.position);
-
-    let displacement =
-        (game.player.velocity * tick) + 0.5 * game.player.acceleration * tick.powi(2);
-    let next_position = game.player.position + to_i64coords(displacement);
-
-    let circ = game.world.height_map.len();
-    let terrain_index = game.world.terrain_index_beneath(game.player.position);
-    let terrain_a = game.world.surface(terrain_index);
-    let terrain_b = game.world.surface((terrain_index + 1) % circ);
-
-    // If player under terrain at next position
-    if orientation(terrain_a, terrain_b, next_position) != Orientation::Clockwise {
-        game.player.position =
-            get_intersection(terrain_a, terrain_b, game.player.position, next_position)
-                .unwrap_or(game.player.position);
-        game.player.velocity = Vec2::ZERO;
-        game.player.acceleration = Vec2::ZERO;
-
-        game.state = GameState::Landed;
-
-        return;
-    }
-
-    game.player.position = next_position;
-    let next_acceleration = game.world.grativy_at(next_position);
-    game.player.velocity += 0.5 * (game.player.acceleration + next_acceleration) * PHYSICS_TICK;
-    game.player.acceleration = Vec2::ZERO;
-
-    game.stats.time += PHYSICS_TICK;
-    game.stats.distance += displacement.length();
-    game.stats.max_altitude = game
-        .stats
-        .max_altitude
-        .max(game.world.altitude_at(game.player.position));
-    game.stats.max_speed = game.stats.max_speed.max(game.player.velocity.length())
 }
 
 #[derive(Debug, PartialEq)]
@@ -179,7 +138,8 @@ fn get_intersection(a: I64Vec2, b: I64Vec2, c: I64Vec2, d: I64Vec2) -> Option<I6
 
 fn to_i64coords_with_rem(f32coords: Vec2) -> (I64Vec2, Vec2) {
     let i64coords = (f32coords * 256.0).floor().as_i64vec2();
-    (i64coords, f32coords - i64coords.as_vec2() / 256.0)
+    let remainder = f32coords.rem_euclid(Vec2::splat(1.0 / 256.0));
+    (i64coords, remainder)
 }
 
 #[cfg(test)]

@@ -15,7 +15,7 @@ mod utils;
 #[derive(Debug)]
 pub enum GameError {
     MQError(macroquad::Error),
-    NSError(nanoserde::DeJsonErr)
+    NSError(nanoserde::DeJsonErr),
 }
 impl From<macroquad::Error> for GameError {
     fn from(error: macroquad::Error) -> GameError {
