@@ -19,5 +19,5 @@ pub fn draw_player(render_space: &RenderSpace, player: &Player, assets: &RenderA
         WHITE,
         params,
     );
-    draw_circle_lines(player_pos.x, player_pos.y, 0.08, 0.01, PINK);
+    // draw_circle_lines(player_pos.x, player_pos.y, 0.08, 0.01, PINK);
 }

@@ -1,12 +1,12 @@
 #![allow(dead_code)]
-use core::f32::consts;
+use core::{f32::consts, fmt};
 use macroquad::math::*;
 use crate::utils::*;
 
 const GRAVITY: f32 = 9.81;
 use TrebuchetMaterial as TM;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum TrebuchetMaterial {
     #[default]
     Cardboard,
@@ -14,6 +14,12 @@ pub enum TrebuchetMaterial {
     Wood2,
     Steel,
     Space,
+}
+
+impl fmt::Display for TrebuchetMaterial {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -29,13 +35,13 @@ pub struct TrebuchetArm {
     center:       f32,
     mass:         f32,
     inertia:      f32,
-    angle:        f32,
+    pub angle:    f32,
     velocity:     f32,
     material:     TM,
 }
 
 impl TrebuchetArm {
-    fn new(long_length: f32, short_length: f32, mass: f32, material: TM) -> Self {
+    pub fn new(long_length: f32, short_length: f32, mass: f32, material: TM) -> TrebuchetArm {
         Self {
             long_length,
             short_length,
@@ -48,19 +54,17 @@ impl TrebuchetArm {
         }
     }
 
-    pub fn texture(&self) -> &str {
-        match self.material {
-            TM::Cardboard => "cardboard_arm",
-            TM::Wood1 => "wood1_arm",
-            TM::Wood2 => "wood2_arm",
-            TM::Steel => "steel_arm",
-            TM::Space => "space_arm",
-        }
+    pub fn total_length(&self) -> f32 {
+        self.long_length + self.short_length
+    }
+
+    pub fn texture(&self) -> String {
+        format!("{}_arm", self.material.to_string().to_lowercase())
     }
 }
 
 pub struct TrebuchetWeight {
-    length:   f32,
+    pub length:   f32,
     mass:     f32,
     inertia:  f32,
     angle:    f32,
@@ -69,8 +73,8 @@ pub struct TrebuchetWeight {
 }
 
 impl TrebuchetWeight {
-    fn new(length: f32, mass: f32, material: TM) -> Self {
-        Self {
+    pub fn new(length: f32, mass: f32, material: TM) -> TrebuchetWeight {
+        TrebuchetWeight {
             length,
             mass,
             inertia:  1.0,
@@ -80,14 +84,8 @@ impl TrebuchetWeight {
         }
     }
 
-    pub fn texture(&self) -> &str {
-        match self.material {
-            TM::Cardboard => "cardboard_weight",
-            TM::Wood1 => "wood1_weight",
-            TM::Wood2 => "wood2_weight",
-            TM::Steel => "steel_weight",
-            TM::Space => "space_weight",
-        }
+    pub fn texture(&self) -> String {
+        format!("{}_weight", self.material.to_string().to_lowercase())
     }
 }
 
@@ -95,65 +93,57 @@ pub struct TrebuchetSling {
     length:   f32,
     angle:    f32,
     velocity: f32,
-    material: TM,
 }
 
 impl TrebuchetSling {
-    fn new(length: f32, material: TM) -> Self {
-        Self {
+    pub fn new(length: f32) -> TrebuchetSling {
+        TrebuchetSling {
             length,
             angle:    0.0,
             velocity: 0.0,
-            material,
         }
     }
 
-    pub fn texture(&self) -> (&str, &str) {
-        match self.material {
-            TM::Cardboard => ("cardboard_sling_close", "cardboard_sling_open"),
-            TM::Wood1 => ("wood1_sling_close", "wood1_sling_open"),
-            TM::Wood2 => ("wood2_sling_close", "wood2_sling_open"),
-            TM::Steel => ("steel_sling_close", "steel_sling_open"),
-            TM::Space => ("space_sling_close", "space_sling_open"),
-        }
+    pub fn texture(&self) -> (String, String) {
+        (
+            "sling_open".to_string(),
+            "sling_close".to_string(),
+        )
     }
 }
 
 #[derive(Default)]
 pub struct TrebuchetBuilder {
     position: I64Vec2,
-    height: Option<f32>,
-    m_proj: Option<f32>,
+    height:   Option<f32>,
+    material: Option<TM>,
+    m_proj:   Option<f32>,
 
-    arm: Option<TrebuchetArm>,
+    arm:    Option<TrebuchetArm>,
     weight: Option<TrebuchetWeight>,
-    sling: Option<TrebuchetSling>,
+    sling:  Option<TrebuchetSling>,
 }
 
 #[allow(dead_code)]
 impl TrebuchetBuilder {
-    pub fn height(mut self, height: f32) -> Self {
+    pub fn base(mut self, height: f32, material: TM) -> Self {
         self.height = Some(height);
+        self.material = Some(material);
         self
     }
 
-    pub fn m_proj(mut self, m_proj: f32) -> Self {
-        self.m_proj = Some(m_proj);
+    pub fn arm(mut self, arm: TrebuchetArm) -> Self {
+        self.arm = Some(arm);
         self
     }
 
-    pub fn arm(mut self, long_length: f32, short_length: f32, mass: f32, material: TM) -> Self {
-        self.arm = Some(TrebuchetArm::new(long_length, short_length, mass, material));
+    pub fn weight(mut self, weight: TrebuchetWeight) -> Self {
+        self.weight = Some(weight);
         self
     }
 
-    pub fn weight(mut self, length: f32, mass: f32, material: TM) -> Self {
-        self.weight = Some(TrebuchetWeight::new(length, mass, material));
-        self
-    }
-
-    pub fn sling(mut self, length: f32, material: TM) -> Self {
-        self.sling = Some(TrebuchetSling::new(length, material));
+    pub fn sling(mut self, length: f32) -> Self {
+        self.sling = Some(TrebuchetSling::new(length));
         self
     }
 
@@ -168,10 +158,15 @@ impl TrebuchetBuilder {
         Ok(Trebuchet {
             position: self.position,
             height: self.height.unwrap_or(1.0),
-            m_proj: self.m_proj.unwrap_or(0.3),
+            material: self.material.unwrap_or(TM::Cardboard),
+            // height: self.height.unwrap_or(5.6),
+            m_proj: 0.3,
             arm: self.arm.unwrap_or(TrebuchetArm::new(1.6, 0.4, 0.25, TM::Cardboard)),
-            weight: self.weight.unwrap_or(TrebuchetWeight::new(0.5, 5.0, TM::Cardboard)),
-            sling: self.sling.unwrap_or(TrebuchetSling::new(1.6, TM::Cardboard)),
+            weight: self.weight.unwrap_or(TrebuchetWeight::new(0.5, 50.0, TM::Cardboard)),
+            sling: self.sling.unwrap_or(TrebuchetSling::new(1.6)),
+            // arm: self.arm.unwrap_or(TrebuchetArm::new(8.0, 2.0, 12.0, TM::Cardboard)),
+            // weight: self.weight.unwrap_or(TrebuchetWeight::new(2.0, 100.0, TM::Cardboard)),
+            // sling: self.sling.unwrap_or(TrebuchetSling::new(8.0, TM::Cardboard)),
             state: TrebuchetState::Stage1,
         })
     }
@@ -180,6 +175,7 @@ impl TrebuchetBuilder {
 pub struct Trebuchet {
     pub position: I64Vec2,
     pub height:   f32,
+    pub material: TrebuchetMaterial,
     m_proj:       f32,
 
     pub arm:    TrebuchetArm,
@@ -192,6 +188,10 @@ pub struct Trebuchet {
 impl Trebuchet {
     pub fn init(position: I64Vec2) -> TrebuchetBuilder {
         TrebuchetBuilder { position, ..Default::default() }
+    }
+
+    pub fn texture(&self) -> String {
+        format!("{}_base", self.material.to_string().to_lowercase())
     }
 
     pub fn armsling_point(&self) -> Vec2 {
@@ -287,27 +287,25 @@ impl Trebuchet {
     }
 
     fn stage_1(&self, dt: f32, mat: Mat3A) -> Mat3A {
-        let lal = self.arm.long_length;
-        let las = self.arm.short_length;
-        let cga = self.arm.center;
-        let lw = self.weight.length;
-        let ls = self.sling.length;
-
-        let ma = self.arm.mass;
-        let mw = self.weight.mass;
         let mp = self.m_proj;
-
-        let ia = self.arm.inertia;
-        let iw = self.weight.inertia;
-
-        let aq = mat.x_axis.x;
-        let wq = mat.x_axis.y;
-        let sq = mat.x_axis.z;
-
-        let aw = mat.y_axis.x;
-        let ww = mat.y_axis.y;
-        let sw = mat.y_axis.z;
-
+        let TrebuchetArm { 
+            long_length: lal, 
+            short_length: las, 
+            center: cga, 
+            mass: ma, 
+            inertia: ia, 
+            .. 
+        } = self.arm;
+        let TrebuchetWeight { 
+            length: lw, 
+            mass: mw, 
+            inertia: iw, 
+            .. 
+        } = self.weight;
+        let ls = self.sling.length;
+        let Vec3A {x: aq, y: wq, z: sq} = mat.x_axis;
+        let Vec3A {x: aw, y: ww, z: sw} = mat.y_axis;
+        
         #[rustfmt::skip]
         let m = Mat2::from_cols_array(&[
             -mp * lal.powi(2) * (-1.0 + 2.0 * aq.sin() * sq.cos() / (aq + sq).sin()) + ia + iw + ma 
@@ -347,26 +345,24 @@ impl Trebuchet {
     }
 
     fn stage_2(&self, dt: f32, mat: Mat3A) -> Mat3A {
-        let lal = self.arm.long_length;
-        let las = self.arm.short_length;
-        let cga = self.arm.center;
-        let lw = self.weight.length;
-        let ls = self.sling.length;
-
-        let ma = self.arm.mass;
-        let mw = self.weight.mass;
         let mp = self.m_proj;
-
-        let ia = self.arm.inertia;
-        let iw = self.weight.inertia;
-
-        let aq = mat.x_axis.x;
-        let wq = mat.x_axis.y;
-        let sq = mat.x_axis.z;
-
-        let aw = mat.y_axis.x;
-        let ww = mat.y_axis.y;
-        let sw = mat.y_axis.z;
+        let TrebuchetArm { 
+            long_length: lal, 
+            short_length: las, 
+            center: cga, 
+            mass: ma, 
+            inertia: ia, 
+            .. 
+        } = self.arm;
+        let TrebuchetWeight { 
+            length: lw, 
+            mass: mw, 
+            inertia: iw, 
+            .. 
+        } = self.weight;
+        let ls = self.sling.length;
+        let Vec3A {x: aq, y: wq, z: sq} = mat.x_axis;
+        let Vec3A {x: aw, y: ww, z: sw} = mat.y_axis;
 
         #[rustfmt::skip]
         let m = Mat3A::from_cols_array(&[
@@ -406,6 +402,8 @@ impl Trebuchet {
 mod test {
     use macroquad::math::Mat3;
 
+    use crate::game::TrebuchetMaterial;
+
     #[test]
     fn mat_mul(){
         let col = [
@@ -420,5 +418,10 @@ mod test {
         ];
         let m = Mat3::from_cols_array(&col);
         println!("{:?}", m * 2.0 + Mat3::from_cols_array(&add))
+    }
+
+    #[test]
+    fn enum_str() {
+        println!("{}", TrebuchetMaterial::Cardboard.to_string().to_lowercase())
     }
 }

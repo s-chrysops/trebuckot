@@ -2,7 +2,7 @@ use macroquad::{
     material::{load_material, Material, MaterialParams},
     miniquad::{ShaderSource, UniformType},
     text::{load_ttf_font, Font},
-    texture::{load_texture, Texture2D},
+    texture::{load_texture, FilterMode, Texture2D},
 };
 
 use crate::GameError;
@@ -22,6 +22,8 @@ impl RenderAssets {
             "bucko.png",
             "plushie_test.png",
             "hud/resources_cardboard.png",
+            "trebuchet/cardboard_base.png",
+            "trebuchet/cardboard_arm.png",
             "trebuchet/cardboard_weight.png",
         ];
 
@@ -35,7 +37,9 @@ impl RenderAssets {
                 .and_then(|s| s.strip_suffix(".png"))
                 .unwrap();
             texture_names.push(name.into());
-            textures.push(load_texture(path).await?)
+            let texture = load_texture(path).await?;
+            texture.set_filter(FilterMode::Nearest);
+            textures.push(texture);
         }
 
         let terrain_material = load_material(
