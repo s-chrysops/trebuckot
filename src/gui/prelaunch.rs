@@ -23,6 +23,7 @@ pub async fn prelaunch(game: &mut Game) -> Scene {
         .size(button_size)
         .ui(&mut root_ui())
     {
+        game.state = GameState::Paused;
         next_scene = Some(Scene::Upgrades(UpgradesState::default()));
     }
 

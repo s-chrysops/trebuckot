@@ -2,27 +2,48 @@
     {
         "name": "Bucko Lab I", 
         "cost": 1, 
-        "spot": [0, 0], 
+        "spot": 0, 
         "desc": "Enable buckos to further research Trebuchet technologies"
     },
     {
         "name": "Rocks", 
         "cost": 1, 
-        "spot": [6, 0], 
+        "spot": 0, 
         "desc": "Add rock. Weight heavy. Plushie go far! UGGA!!"
+    },
+    {
+        "name": "test1", 
+        "cost": 100, 
+        "spot": 1, 
+        "desc": "blabblabblab",
+        "requ": ["Bucko Lab I"]
     },
     {
         "name": "test2", 
         "cost": 100, 
-        "spot": [0, 1], 
+        "spot": 1, 
         "desc": "blabblabblab",
-        "parents": ["Bucko Lab I"]
+        "requ": ["Bucko Lab I"]
     },
     {
         "name": "test3", 
         "cost": 100, 
-        "spot": [6, 1], 
+        "spot": 1, 
         "desc": "blabblabblab",
-        "parents": ["Rocks"]
+        "requ": ["Rocks"]
+    },
+    {
+        "name": "test4", 
+        "cost": 100, 
+        "spot": 2, 
+        "desc": "blabblabblab",
+        "requ": ["test2"]
+    },
+    {
+        "name": "test5", 
+        "cost": 100, 
+        "spot": 2, 
+        "desc": "blabblabblab",
+        "requ": ["test2", "test3"]
     }
 ]
