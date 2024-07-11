@@ -18,11 +18,12 @@ impl Physics {
     }
 
     pub fn update(&mut self, game: &mut Game) {
-        if is_key_down(KeyCode::Escape) && game.state == GameState::Launched {
-            game.state = GameState::Paused;
-        }
         if game.state != GameState::Launched {
             return;
+        }
+
+        if is_key_down(KeyCode::Escape) {
+            game.state = GameState::Paused;
         }
 
         self.time_acc += get_frame_time();
@@ -117,23 +118,6 @@ fn orientation(p: I64Vec2, q: I64Vec2, r: I64Vec2) -> Orientation {
         0 => Orientation::Colinear,
         _ => unreachable!(),
     }
-}
-
-// | |a-b| a-b |
-// | |c-d| c-d |
-// -------------
-//  | a-b c-d |
-fn get_intersection(a: I64Vec2, b: I64Vec2, c: I64Vec2, d: I64Vec2) -> Option<I64Vec2> {
-    let xdiff = I64Vec2::new(a.x - b.x, c.x - d.x).as_dvec2();
-    let ydiff = I64Vec2::new(a.y - b.y, c.y - d.y).as_dvec2();
-    let div = xdiff.perp_dot(ydiff);
-    if div == 0.0 {
-        return None;
-    }
-    let dets = I64Vec2::new(a.perp_dot(b), c.perp_dot(d)).as_dvec2();
-    let x = dets.perp_dot(xdiff) / div;
-    let y = dets.perp_dot(ydiff) / div;
-    Some(I64Vec2::new(x.round() as i64, y.round() as i64))
 }
 
 fn to_i64coords_with_rem(f32coords: Vec2) -> (I64Vec2, Vec2) {

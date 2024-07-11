@@ -148,14 +148,12 @@ impl TrebuchetBuilder {
     }
 
     pub fn center(mut self, center: f32) -> Self {
-        let mut arm = self.arm.expect("No arm constructed");
-        arm.center = center;
-        self.arm = Some(arm);
+        if let Some(arm) = self.arm.as_mut() { arm.center = center }
         self
     }
 
-    pub async fn build(self) -> Result<Trebuchet, crate::GameError> {
-        Ok(Trebuchet {
+    pub fn build(self) -> Trebuchet {
+        Trebuchet {
             position: self.position,
             height: self.height.unwrap_or(1.0),
             material: self.material.unwrap_or(TM::Cardboard),
@@ -168,7 +166,7 @@ impl TrebuchetBuilder {
             // weight: self.weight.unwrap_or(TrebuchetWeight::new(2.0, 100.0, TM::Cardboard)),
             // sling: self.sling.unwrap_or(TrebuchetSling::new(8.0, TM::Cardboard)),
             state: TrebuchetState::Stage1,
-        })
+        }
     }
 } 
 
@@ -247,7 +245,7 @@ impl Trebuchet {
 
         let stage: Box<dyn Fn(f32, Mat3A) -> Mat3A> = match self.state {
             TrebuchetState::Stage1 => {
-                let Mat3A{x_axis: _, y_axis: Vec3A{x: aw_prime, ..}, ..} = self.stage_1 (dt, mat);
+                let Mat3A{x_axis: _, y_axis: Vec3A{x: aw_prime, ..}, ..} = self.stage_1(dt, mat);
                 if self.ground_force(aw_prime) <= 0.0 {
                     self.state = TrebuchetState::Stage2;
                 }
@@ -268,7 +266,7 @@ impl Trebuchet {
         };
         
         let rk4_results = rk5(mat, dt, stage);
-        Vec3A {x: self.arm.angle, y: self.weight.angle, z: self.sling.angle}         = rk4_results.x_axis;
+        Vec3A {x: self.arm.angle,    y: self.weight.angle,    z: self.sling.angle  } = rk4_results.x_axis;
         Vec3A {x: self.arm.velocity, y: self.weight.velocity, z:self.sling.velocity} = rk4_results.y_axis;
 
         self.state == TrebuchetState::Stage3

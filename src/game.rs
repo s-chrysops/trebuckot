@@ -1,5 +1,6 @@
 use macroquad::prelude::*;
 
+use crate::utils::get_intersection;
 use player::*;
 use resources::*;
 use settings::*;
@@ -40,7 +41,7 @@ pub struct Game {
     pub trebuchet: Trebuchet,
     pub player:    Player,
     pub resources: Resources,
-    pub tech_tree: TechTree, 
+    pub tech_tree: TechTree,
 
     pub settings: Settings,
 }
@@ -48,7 +49,7 @@ pub struct Game {
 impl Game {
     pub async fn init() -> Result<Game, GameError> {
         let world = World::new(
-            IVec2::ZERO,
+            1.0,
             I64Vec2::ZERO,
             6_371_000.0,
             5.972e+24,
@@ -56,7 +57,7 @@ impl Game {
             None,
         );
 
-        let mut trebuchet = Trebuchet::init(START_POINT).build().await?;
+        let mut trebuchet = Trebuchet::init(START_POINT).build();
         trebuchet.reset();
         let player = Player::new(trebuchet.projectile_position());
 
@@ -92,13 +93,21 @@ impl Game {
         ];
 
         self.world = World::new(
-            IVec2::ZERO,
+            self.settings.scale,
             I64Vec2::ZERO,
             6_371_000.0,
             5.972e+24,
             WorldClass::Minshara,
             Some(&terra),
         );
+
+        let terrain_idx = self.world.terrain_index_beneath(START_POINT);
+        let a = self.world.surface(terrain_idx);
+        let b = self.world.surface(terrain_idx + 1);
+        self.trebuchet.position =
+            get_intersection(a, b, START_POINT, self.world.position).unwrap();
+        self.player.position = self.trebuchet.projectile_position();
+
         self.state = GameState::PreLaunch;
     }
 

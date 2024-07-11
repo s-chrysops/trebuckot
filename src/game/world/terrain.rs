@@ -4,13 +4,13 @@ use std::f32::consts;
 use super::perlin::PerlinNoise;
 use super::WorldClass;
 
-type Kilometers = usize;
-type Meters = f32;
-type TerrainIndex = (TerrainClass, usize);
+use crate::utils::units::*;
 
-const AMPL_PLAIN: f32 = 500.0;
-const AMPL_HILLS: f32 = 1000.0;
-const AMPL_ROCKY: f32 = 2000.0;
+pub type TerrainSection = (TerrainClass, usize);
+
+const AMPL_PLAIN: Meters = 500.0;
+const AMPL_HILLS: Meters = 1000.0;
+const AMPL_ROCKY: Meters = 2000.0;
 
 const FREQ_PLAIN: f32 = 0.001;
 const FREQ_HILLS: f32 = 0.01;
@@ -25,52 +25,50 @@ pub enum TerrainClass {
     Ocean,
 }
 
-pub fn gen_height_map(circ: Kilometers, sections: &[TerrainIndex]) -> Vec<Meters> {
+pub fn gen_height_map(circ: Kilometers, sections: &[TerrainSection], scale: f32) -> Vec<Meters> {
     let ami_cute = u64::from_le_bytes("ami cute".as_bytes().try_into().unwrap());
     let noise = PerlinNoise::new(ami_cute, circ);
 
     sections
         .iter()
-        .flat_map(|(class, length)| match class {
-            TerrainClass::Plain => vec![(AMPL_PLAIN, FREQ_PLAIN); *length],
-            TerrainClass::Hills => vec![(AMPL_HILLS, FREQ_HILLS); *length],
-            TerrainClass::Sands => vec![(AMPL_HILLS, FREQ_PLAIN); *length],
-            TerrainClass::Rocky => vec![(AMPL_ROCKY, FREQ_ROCKY); *length],
-            TerrainClass::Ocean => vec![(-AMPL_HILLS, FREQ_ROCKY); *length],
+        .flat_map(|(class, length)| {
+            let noise_params = match class {
+                TerrainClass::Plain => (AMPL_PLAIN * scale, FREQ_PLAIN),
+                TerrainClass::Hills => (AMPL_HILLS * scale, FREQ_HILLS),
+                TerrainClass::Sands => (AMPL_HILLS * scale, FREQ_PLAIN),
+                TerrainClass::Rocky => (AMPL_ROCKY * scale, FREQ_ROCKY),
+                TerrainClass::Ocean => (-AMPL_HILLS * scale, FREQ_ROCKY),
+            };
+            vec![noise_params; *length]
         })
         .enumerate()
         .map(|(i, (ampl, freq))| noise.get(i as f32, ampl, freq) + ampl)
         .collect()
 }
 
-pub fn _gen_sections(circ: Kilometers, _class: WorldClass) -> Vec<TerrainIndex> {
+pub fn gen_sections(circ: Kilometers, _class: WorldClass) -> Vec<TerrainSection> {
     vec![(TerrainClass::Plain, circ)]
 }
 
-const SMOOTH_LENGTH: Kilometers = 30;
+const SMOOTH_LENGTH: Kilometers = 20;
 const FACTOR: f32 = consts::PI / SMOOTH_LENGTH as f32;
-pub fn smooth_at(array: &mut [Meters], index: Kilometers) {
-    let len = array.len();
-    let prev_index = (index + len - 1) % len;
-    let avg = (array[index] - array[prev_index]) / 2.0;
+pub fn smooth_at(height_map: &mut [Meters], index: Kilometers) {
+    let circ = height_map.len();
+    let avg_height = {
+        let prev_index = (index + circ - 1) % circ;
+        (height_map[index] - height_map[prev_index]) / 2.0
+    };
 
-    let mut i = (index + len - SMOOTH_LENGTH / 2) % len;
+    let mut i = (index + circ - SMOOTH_LENGTH / 2) % circ;
     (0..SMOOTH_LENGTH).for_each(|j| {
         let weight = (j as f32 * FACTOR).cos();
-        array[i % len] -= avg * (weight - weight.signum());
+        height_map[i % circ] -= avg_height * (weight - weight.signum());
         i += 1;
     });
 }
 
-/*
-Trudging through the stormy Alaskan rainforest, fighting demigods popping out at every corner,
-I find myself depleted from life's basic need... reliable internet. But, in the scortching
-ice lands of this temporal void, with scars that run deeper than the Mariana, one thought
-powers me to prevail through this herculean challenge with the strength of a dozen Roman legions...
-ami cute
-*/
 #[cfg(test)]
-mod tests {
+mod terrain_tests {
     use super::smooth_at;
 
     #[test]

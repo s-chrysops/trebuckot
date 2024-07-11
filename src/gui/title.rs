@@ -108,8 +108,8 @@ pub async fn title(mut state: TitleState, game: &mut Game) -> Scene {
                         && state.scale.is_some()
                     {
                         game.settings.scale = match state.scale.unwrap() {
-                            UniverseScale::Small => 100.0,
-                            UniverseScale::Medium => 10.0,
+                            UniverseScale::Small => 0.01,
+                            UniverseScale::Medium => 0.1,
                             UniverseScale::Large => 1.0,
                         };
                         game.new_game();

@@ -6,14 +6,14 @@ pub struct DevInfo {
     avg_frame:   f32,
     sample_size: usize,
 
-    fps_samples:   Vec<i32>,
+    fps_samples:   Vec<f32>,
     frame_samples: Vec<f32>,
 }
 
 impl DevInfo {
     pub fn init() -> Self {
         let sample_size = 60;
-        let fps_samples: Vec<i32> = Vec::with_capacity(sample_size);
+        let fps_samples: Vec<f32> = Vec::with_capacity(sample_size);
         let frame_samples: Vec<f32> = Vec::with_capacity(sample_size);
 
         Self {
@@ -26,10 +26,10 @@ impl DevInfo {
     }
 
     pub fn draw(&mut self, game: &Game, render: &Render) {
-        self.fps_samples.push(get_fps());
+        self.fps_samples.push(get_fps() as f32);
         self.frame_samples.push(get_frame_time());
         if self.fps_samples.len() == self.sample_size {
-            self.avg_fps = self.fps_samples.iter().sum::<i32>() as f32 / self.sample_size as f32;
+            self.avg_fps = self.fps_samples.iter().sum::<f32>() / self.sample_size as f32;
             self.avg_frame = self.frame_samples.iter().sum::<f32>() / self.sample_size as f32;
             self.fps_samples.clear();
             self.frame_samples.clear();
@@ -90,10 +90,10 @@ impl DevInfo {
             // format!("   distance: {:.2}", game.stats.distance),
             // format!("max_altitude {:.2}", game.stats.max_altitude),
             // format!("  max_speed: {:.2}", game.stats.max_speed),
-            // format!(
-            //     "gravity: {}",
-            //     game.world.get_grativy(game.player.position).length()
-            // ),
+            format!(
+                "gravity: {}",
+                game.world.grativy_at(game.player.position).length()
+            ),
             format!(
                 "Terrain {:?}",
                 game.world.terrain_class(
