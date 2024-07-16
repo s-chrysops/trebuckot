@@ -57,7 +57,7 @@ async fn main() -> Result<(), GameError> {
 
     let mut dev_info = DevInfo::init();
     loop {
-        gui.update(&mut game).await;
+        gui.update(&mut game);
         physics.update(&mut game);
         render.update(&game);
 
@@ -69,11 +69,14 @@ async fn main() -> Result<(), GameError> {
 }
 
 #[cfg(test)]
-mod test {
+mod important_test {
+    struct Ami {
+        cute: bool,
+    }
+
     #[test]
-    fn test() {
-        let ami = 1337;
-        let cute = 1337;
-        assert_eq!(ami, cute);
+    fn ami_cute() {
+        let ami = Ami { cute: true };
+        assert!(ami.cute);
     }
 }

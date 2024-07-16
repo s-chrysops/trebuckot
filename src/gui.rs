@@ -1,28 +1,28 @@
-use crate::{Game, GameError, GameState};
-use macroquad::ui::root_ui;
+use crate::{Game, GameError};
 
-use gui_assets::GuiAssets;
 use landed::landed;
+use launched::launched;
 use paused::paused;
-use prelaunch::prelaunch;
+use prelaunch::*;
+use scene_assets::*;
 use settings::settings;
 use title::*;
-use upgrades::*;
 
-mod gui_assets;
 mod landed;
+mod launched;
 mod paused;
 mod prelaunch;
+mod scene_assets;
 mod settings;
 mod title;
-mod upgrades;
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub enum Scene {
-    MainMenu(TitleState),
+    #[default]
+    None,
+    Title(TitleState),
     Paused,
-    PreLaunch,
-    Upgrades(UpgradesState),
+    PreLaunch(PreLaunchState),
     Launched,
     Landed,
     Settings(Box<Scene>),
@@ -30,52 +30,26 @@ pub enum Scene {
 
 pub struct Gui {
     scene:  Scene,
-    assets: GuiAssets,
+    assets: Vec<SceneAssets>,
 }
 
 impl Gui {
     pub async fn init() -> Result<Gui, GameError> {
-        let assets = GuiAssets::init().await?;
         Ok(Gui {
-            scene: Scene::MainMenu(TitleState::default()),
-            assets,
+            scene:  Scene::Title(TitleState::default()),
+            assets: scene_assets::init().await?,
         })
     }
 
-    pub async fn update(&mut self, game: &mut Game) {
-        self.scene = match &self.scene {
-            Scene::MainMenu(state) => {
-                root_ui().push_skin(&self.assets.title_skin);
-                title(*state, game).await
-            }
-            // Scene::Data => todo!(),
-            // Scene::Credits => todo!(),
-            Scene::Paused => {
-                root_ui().push_skin(&self.assets.paused_skin);
-                paused(game).await
-            }
-            Scene::PreLaunch => {
-                root_ui().push_skin(&self.assets.prelaunch_skin);
-                prelaunch(game).await
-            }
-            Scene::Upgrades(state) => {
-                root_ui().push_skin(&self.assets.upgrades_skin);
-                upgrades(*state, game).await
-            }
-            Scene::Launched => match game.state {
-                GameState::Paused => Scene::Paused,
-                GameState::Landed => Scene::Landed,
-                _ => Scene::Launched,
-            },
-            Scene::Landed => {
-                root_ui().push_skin(&self.assets.landed_skin);
-                landed(game).await
-            }
-            Scene::Settings(last_scene) => {
-                root_ui().push_skin(&self.assets.settings_skin);
-                settings(game, last_scene.clone()).await
-            }
+    pub fn update(&mut self, game: &mut Game) {
+        self.scene = match std::mem::take(&mut self.scene) {
+            Scene::None => unreachable!(),
+            Scene::Title(state) => title(&self.assets[TITLE], state, game),
+            Scene::Paused => paused(&self.assets[PAUSED], game),
+            Scene::PreLaunch(state) => prelaunch(&self.assets[PRELAUNCH], state, game),
+            Scene::Launched => launched(&self.assets[LAUNCHED], game),
+            Scene::Landed => landed(&self.assets[LANDED], game),
+            Scene::Settings(last_scene) => settings(&self.assets[SETTINGS], last_scene, game),
         };
-        root_ui().pop_skin();
     }
 }
